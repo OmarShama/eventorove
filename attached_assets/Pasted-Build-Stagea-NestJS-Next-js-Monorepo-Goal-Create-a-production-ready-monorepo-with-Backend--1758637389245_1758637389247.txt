@@ -1,0 +1,389 @@
+Build “Stagea” (NestJS + Next.js Monorepo)
+
+Goal
+Create a production-ready monorepo with:
+
+Backend (NestJS) using TypeORM + PostgreSQL
+
+Frontend (Next.js App Router) with Tailwind + shadcn/ui
+
+MVP features: venue registration, client (guest) registration, instant bookings in hourly (min 30 min) slots, local image upload (max 20 images, 5MB each), Cairo timezone, Google Maps on search, no fees shown, pay at venue, email notifications, admin moderation for venues.
+
+Architecture emphasis: route → middleware → controller → service (we’ll reflect this with Nest middleware + guards; routes defined in controllers; services handle logic).
+
+0) Tooling & workspace
+
+Node 20+, pnpm, TypeScript strict.
+
+Create monorepo structure:
+
+stagea/
+  package.json  (pnpm workspaces)
+  pnpm-workspace.yaml
+  .editorconfig
+  .gitignore
+  docker-compose.yml
+  README.md
+  apps/
+    backend/    (NestJS)
+    web/        (Next.js App Router)
+  packages/
+    shared/     (shared types + zod schemas)
+    ui/         (shared UI if needed)
+
+
+Workspace root package.json:
+
+name: stagea
+
+private: true
+
+scripts: dev, dev:backend, dev:web, build, lint, format
+
+workspaces: apps/*, packages/*
+
+1) Backend — NestJS (apps/backend)
+
+Create Nest app: nest new backend inside apps.
+
+Install deps:
+
+core: @nestjs/config @nestjs/typeorm typeorm pg
+
+security: helmet cors rate-limiter-flexible
+
+auth: @nestjs/passport passport passport-jwt jsonwebtoken bcrypt
+
+validation: class-validator class-transformer
+
+upload: multer @nestjs/platform-express
+
+utils: date-fns, luxon
+
+testing: @nestjs/testing supertest
+
+Project config:
+
+TZ=Africa/Cairo (via .env and Docker)
+
+Enable ValidationPipe, CORS, Helmet
+
+Rate limiting using rate-limiter-flexible (per IP)
+
+Folder layout:
+
+apps/backend/src/
+  main.ts
+  app.module.ts
+  common/
+    middleware/logger.middleware.ts
+    guards/jwt-auth.guard.ts
+    interceptors/
+    dtos/
+  config/
+    app.config.ts
+    typeorm.config.ts
+    mail.config.ts
+  auth/
+    auth.module.ts
+    auth.controller.ts
+    auth.service.ts
+    jwt.strategy.ts
+    dtos/
+  users/
+    users.module.ts
+    users.controller.ts
+    users.service.ts
+    user.entity.ts
+    dtos/
+  venues/
+    venues.module.ts
+    venues.controller.ts
+    venues.service.ts
+    venue.entity.ts
+    venue-image.entity.ts
+    venue-amenity.entity.ts
+    venue-package.entity.ts
+    availability-rule.entity.ts
+    blackout.entity.ts
+    dtos/
+  bookings/
+    bookings.module.ts
+    bookings.controller.ts
+    bookings.service.ts
+    booking.entity.ts
+    dtos/
+  admin/
+    admin.module.ts
+    admin.controller.ts
+    admin.service.ts
+  uploads/
+    (local disk storage)
+  seed/
+    seed.module.ts
+    seed.service.ts
+
+
+Entities (TypeORM)
+
+User: id, role (guest | host | admin), name, email (unique), passwordHash, emailVerifiedAt, createdAt/updatedAt.
+
+Venue: id, hostId (FK User), title, description, category, address, city, lat, lng, capacity, baseHourlyPriceEGP, minBookingMinutes (default 30), maxBookingMinutes (nullable = “open”), bufferMinutes (default 30), amenities (relation), status (draft | pending_approval | approved | rejected), createdAt/updatedAt.
+
+VenueImage: id, venueId, path, idx.
+
+VenueAmenity: id, venueId, name (tag).
+
+VenuePackage: id, venueId, name, description, priceEGP, durationMinutes (optional) — simple “packages” MVP.
+
+AvailabilityRule: id, venueId, dayOfWeek (0–6), openTime (HH:mm), closeTime (HH:mm) — recurring weekly hours.
+
+Blackout: id, venueId, startDateTime, endDateTime — host blocked times.
+
+Booking: id, venueId, guestId, startDateTime, endDateTime, status (confirmed | cancelled), totalPriceEGP (computed), createdAt.
+
+Auth
+
+Email+password signup/login.
+
+JWT access tokens; bcrypt for pwd hashing.
+
+Email verification stub (send email with token link; for MVP, mark verified on click).
+
+Guards for roles (guest/host/admin).
+
+Uploads (local)
+
+Multer disk storage to apps/backend/uploads/venues/:venueId/
+
+Validate max 20 images per venue & 5MB per image.
+
+Serve /static/* from that folder.
+
+Booking rules
+
+Instant booking only.
+
+Hourly granularity with min 30 minutes; venue can override minBookingMinutes, maxBookingMinutes (nullable = no max).
+
+Enforce bufferMinutes (default 30; venue can override).
+
+Conflict detection checks:
+
+Requested time must be within any AvailabilityRule window for that day.
+
+Must not overlap with Blackout windows.
+
+Must not overlap other Booking (+ buffer).
+
+No cancellation policy at MVP (host can add later; we’ll store a free-text policy field for future).
+
+No platform fees shown; pay at venue (display on confirmation & emails).
+
+Pricing
+
+Compute totalPriceEGP = ceil(duration in hours to 0.5 or 1.0 increments) × baseHourlyPriceEGP. (Keep it hourly; allow 30-min floor if min=30.)
+
+Email
+
+Use simple SMTP transport from .env (or console logger if unset).
+
+Send on: guest signup (verify), booking confirmation to guest & host.
+
+Search API (supports “all appropriate filters” MVP)
+
+Filters: q (title/desc), city, category, capacityMin, priceMin, priceMax, amenities[], hasPackages, availableAt (ISO datetime start) + durationMinutes (availability check), bbox (map bounds: minLng,minLat,maxLng,maxLat).
+
+Returns paginated venues with geo & basic availability flag.
+
+Admin
+
+Approve/reject venues (pending_approval -> approved).
+
+List users, venues, bookings; basic metrics (bookings/day).
+
+Routing approach (route → middleware → controller → service)
+
+Add request logger middleware (per route).
+
+Auth middleware (JWT) -> role guards.
+
+Controllers only orchestrate + DTO validation; services contain business logic.
+
+Separate AvailabilityService (normalize rules, compute free slots, conflict checks).
+
+.env (backend)
+
+APP_NAME=Stagea
+NODE_ENV=development
+TZ=Africa/Cairo
+PORT=3005
+JWT_SECRET=change-me
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=stagea
+DB_PASS=stagea
+DB_NAME=stagea
+STATIC_BASE_URL=http://localhost:3005/static
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM="Stagea <no-reply@stagea.local>"
+
+2) Frontend — Next.js (apps/web)
+
+Create Next App Router project (app/ directory) with TypeScript, ESLint, Tailwind, shadcn/ui, React Hook Form, Zod.
+
+Install deps: next @tanstack/react-query axios react-hook-form zod @radix-ui/react-popover etc.
+
+Google Maps
+
+Use Google Maps JS API (Places/Maps).
+
+Env: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
+
+Pages (App Router)
+
+/ Landing: city/category search, map.
+
+/auth/login, /auth/register
+
+/venues/new (host create), /venues/[id] (details, gallery, packages, amenities, map)
+
+/book/[venueId] (datetime picker, duration, availability check, confirm)
+
+/host/venues (list + status), /host/venues/[id]/edit
+
+/admin (simple dashboard: approvals, lists)
+
+Components: SearchBar, FilterDrawer (mobile), MapView (Google Maps), VenueCard, ImageUploader (20 imgs limit + size), DateTimeRangePicker (hourly with 30-min min).
+
+UX
+
+Indicate Instant booking & Pay at venue clearly.
+
+Hide platform fees.
+
+Availability check calls backend GET /venues/:id/availability?start=&durationMinutes=.
+
+.env (web)
+
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3005
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_KEY
+
+3) Shared package (packages/shared)
+
+Export TypeScript types for DTOs (User, Venue, Booking, Search filters) and Zod validators to keep frontend + backend aligned.
+
+4) Docker & Postgres
+
+docker-compose.yml at repo root:
+
+db (postgres:16) with volume, exposed 5432.
+
+backend service (build apps/backend, env TZ=Africa/Cairo, mount uploads volume).
+
+web service (build apps/web).
+
+Healthchecks and simple depends_on.
+
+Optional pgAdmin or Adminer service.
+
+5) Seed script
+
+Backend seed command to create:
+
+Admin user (admin@stagea.local / Admin123!)
+
+1–2 hosts with sample venues in Cairo (lat/lng), categories (e.g., “studio”, “hall”, “meeting_room”), amenities, packages, availability rules, images (use placeholders).
+
+A few bookings to test conflict logic.
+
+6) API surface (minimum)
+
+POST /auth/register (role guest/host), POST /auth/login
+
+GET /me
+
+POST /venues (host) — set status=pending_approval
+
+PATCH /venues/:id (host)
+
+POST /venues/:id/images (multer; limit 20; 5MB each)
+
+POST /venues/:id/amenities, POST /venues/:id/packages
+
+POST /venues/:id/availability/rules, POST /venues/:id/blackouts
+
+GET /venues/search (filters incl. availableAt, durationMinutes, bbox)
+
+GET /venues/:id
+
+GET /venues/:id/availability (returns next N free windows given venue rules)
+
+POST /bookings (guest) — validates availability + buffer + min/max rules
+
+GET /bookings/me
+
+GET /admin/venues?status=pending_approval, PATCH /admin/venues/:id/approve|reject
+
+7) Security & quality
+
+Global ValidationPipe with whitelist/transform.
+
+DTOs for all mutations.
+
+Helmet + strict CORS config (origin = web).
+
+Rate limit on auth & booking endpoints.
+
+Basic e2e test: booking success vs. conflict.
+
+ESLint + Prettier + Husky pre-commit (optional).
+
+8) Commands
+
+Root scripts:
+
+pnpm i
+
+pnpm dev → concurrently starts backend (3005) & web (3000)
+
+pnpm build
+
+Backend scripts: start:dev, seed, typeorm:migration:generate, typeorm:migration:run
+
+Web scripts: dev, build, start
+
+9) README
+
+Document env vars, how to run with Docker Compose vs local.
+
+Notes: “Instant bookings, pay at venue, no platform fees shown, Cairo timezone.”
+
+Image upload limits (20 images / 5MB).
+
+10) Finishing touches
+
+Replace all user-facing app strings to use Stagea (from APP_NAME where possible).
+
+Display “Instant booking • Pay at venue • Cairo time” badges on venue pages.
+
+Map uses Google Maps; search supports map bounds filtering.
+
+Make venue min/max duration & buffer configurable per venue (with defaults: min 30, max open, buffer 30).
+
+Deliverables
+
+Full monorepo with the above structure.
+
+Running dev setup (pnpm dev) serving:
+
+Next.js on http://localhost:3000
+
+NestJS on http://localhost:3005
+
+Postgres via Docker.
+
+Seeded demo data; can create bookings that respect availability + buffer
