@@ -17,6 +17,50 @@ const bookingService = new BookingService(storage);
 const availabilityService = new AvailabilityService(storage);
 const emailService = new EmailService();
 
+// Test authentication middleware that bypasses real auth for testing (DEVELOPMENT ONLY)
+const testAuthMiddleware = async (req: any, res: any, next: any) => {
+  // SECURITY: Only enable in development or when TEST_AUTH flag is set
+  if (process.env.NODE_ENV !== 'development' && process.env.TEST_AUTH !== 'true') {
+    return isAuthenticated(req, res, next);
+  }
+  
+  // For testing, simulate authenticated user based on query param or default to admin
+  const userType = req.query.user || req.headers['x-test-user'] || 'admin';
+  
+  let userId;
+  switch(userType) {
+    case 'host':
+      userId = 'host-user-456';
+      break;
+    case 'guest':
+      userId = 'guest-user-789';
+      break;
+    default:
+      userId = 'admin-user-123';
+  }
+  
+  try {
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Mock the authentication structure expected by routes
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      claims: { sub: user.id, role: user.role }
+    };
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: "Authentication error" });
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -27,19 +71,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      // For testing purposes, create a mock admin user
-      const mockUser = {
-        id: 'test-admin-123',
-        email: 'admin@stagea.com',
-        firstName: 'Test',
-        lastName: 'Admin',
-        profileImageUrl: null,
-        role: 'admin',
-        emailVerifiedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      // For testing, check if user preference is set in query param or default to admin
+      const userType = req.query.user || 'admin';
+      
+      let userId;
+      switch(userType) {
+        case 'host':
+          userId = 'host-user-456';
+          break;
+        case 'guest':
+          userId = 'guest-user-789';
+          break;
+        default:
+          userId = 'admin-user-123';
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Store the current user in session for authentication middleware
+      req.user = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        claims: { sub: user.id, role: user.role }
       };
-      res.json(mockUser);
+      
+      res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -47,19 +109,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Venue routes
-  app.post('/api/venues', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const userId = req.user.id;
+      const userRole = req.user.role;
       
-      if (user?.role !== 'host' && user?.role !== 'admin') {
-        return res.status(403).json({ message: "Only hosts can create venues" });
+      // Admin can create venues for any host, hosts can create their own venues
+      if (userRole !== 'host' && userRole !== 'admin') {
+        return res.status(403).json({ message: "Only hosts and admins can create venues" });
       }
 
       const venueData = insertVenueSchema.parse({
         ...req.body,
-        hostId: userId,
-        status: 'pending_approval'
+        hostId: req.body.hostId || userId, // Admin can specify hostId, others use their own
+        status: userRole === 'admin' ? 'approved' : 'pending_approval' // Admin venues auto-approved
       });
 
       const venue = await venueService.createVenue(venueData);
@@ -105,27 +168,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/venues/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/venues/:id', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
+      const userRole = req.user.role;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue) {
         return res.status(404).json({ message: "Venue not found" });
       }
 
-      if (venue.hostId !== userId && req.user.claims.role !== 'admin') {
+      // Admin can edit any venue, hosts can only edit their own venues
+      if (venue.hostId !== userId && userRole !== 'admin') {
         return res.status(403).json({ message: "Not authorized to update this venue" });
       }
 
       const updates = { ...req.body };
-      delete updates.hostId; // Prevent hostId changes
+      // Admin can change hostId, regular hosts cannot
+      if (userRole !== 'admin') {
+        delete updates.hostId;
+      }
       
       const updatedVenue = await storage.updateVenue(req.params.id, updates);
       res.json(updatedVenue);
     } catch (error) {
       console.error("Error updating venue:", error);
       res.status(400).json({ message: "Failed to update venue" });
+    }
+  });
+
+  app.delete('/api/venues/:id', testAuthMiddleware, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      const venue = await storage.getVenue(req.params.id);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+
+      // Admin can delete any venue, hosts can only delete their own venues
+      if (venue.hostId !== userId && userRole !== 'admin') {
+        return res.status(403).json({ message: "Not authorized to delete this venue" });
+      }
+      
+      await storage.deleteVenue(req.params.id);
+      res.json({ message: "Venue deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting venue:", error);
+      res.status(400).json({ message: "Failed to delete venue" });
     }
   });
 
@@ -154,9 +245,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Host venue management
-  app.get('/api/host/venues', isAuthenticated, async (req: any, res) => {
+  app.get('/api/host/venues', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venues = await storage.getVenuesByHost(userId);
       res.json(venues);
     } catch (error) {
@@ -166,7 +257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Venue image upload
-  app.post('/api/venues/:id/images/upload', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/images/upload', testAuthMiddleware, async (req: any, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -177,9 +268,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/venues/:id/images', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/images', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue) {
@@ -223,9 +314,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Venue amenities
-  app.post('/api/venues/:id/amenities', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/amenities', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue || venue.hostId !== userId) {
@@ -245,9 +336,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Venue packages
-  app.post('/api/venues/:id/packages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/packages', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue || venue.hostId !== userId) {
@@ -270,9 +361,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Availability rules
-  app.post('/api/venues/:id/availability/rules', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/availability/rules', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue || venue.hostId !== userId) {
@@ -294,9 +385,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Blackouts
-  app.post('/api/venues/:id/blackouts', isAuthenticated, async (req: any, res) => {
+  app.post('/api/venues/:id/blackouts', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const venue = await storage.getVenue(req.params.id);
       
       if (!venue || venue.hostId !== userId) {
@@ -318,13 +409,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Booking routes
-  app.post('/api/bookings', isAuthenticated, async (req: any, res) => {
+  app.post('/api/bookings', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const userId = req.user.id;
+      const userRole = req.user.role;
       
-      if (user?.role !== 'guest' && user?.role !== 'admin') {
-        return res.status(403).json({ message: "Only guests can make bookings" });
+      // Admin can book any venue, guests can book venues
+      if (userRole !== 'guest' && userRole !== 'admin') {
+        return res.status(403).json({ message: "Only guests and admins can make bookings" });
       }
 
       const bookingData = {
@@ -346,9 +438,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/bookings/me', isAuthenticated, async (req: any, res) => {
+  app.get('/api/bookings/me', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookings = await storage.getBookingsByGuest(userId);
       res.json(bookings);
     } catch (error) {
@@ -357,9 +449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/host/bookings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/host/bookings', testAuthMiddleware, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookings = await storage.getBookingsByHost(userId);
       res.json(bookings);
     } catch (error) {
@@ -369,10 +461,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
-  app.get('/api/admin/venues', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/venues', testAuthMiddleware, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
+      const userRole = req.user.role;
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -385,10 +477,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/venues/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/venues/:id/approve', testAuthMiddleware, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
+      const userRole = req.user.role;
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -407,10 +499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/venues/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/admin/venues/:id/reject', testAuthMiddleware, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
+      const userRole = req.user.role;
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -429,10 +521,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/stats', testAuthMiddleware, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
+      const userRole = req.user.role;
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -444,10 +536,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/bookings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/bookings', testAuthMiddleware, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (user?.role !== 'admin') {
+      const userRole = req.user.role;
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
