@@ -24,8 +24,8 @@ export default function SearchBar({ onSearch, className = "" }: SearchBarProps) 
   const handleSearch = () => {
     onSearch({
       q: query || undefined,
-      city: city || undefined,
-      category: category || undefined,
+      city: (city && city !== 'any-city') ? city : undefined,
+      category: (category && category !== 'any-category') ? category : undefined,
       availableAt: dateTime || undefined,
       durationMinutes: duration,
     });
@@ -51,7 +51,7 @@ export default function SearchBar({ onSearch, className = "" }: SearchBarProps) 
             <SelectValue placeholder="Any City" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Any City</SelectItem>
+            <SelectItem value="any-city">Any City</SelectItem>
             <SelectItem value="New Cairo">New Cairo</SelectItem>
             <SelectItem value="Heliopolis">Heliopolis</SelectItem>
             <SelectItem value="Zamalek">Zamalek</SelectItem>
@@ -65,7 +65,7 @@ export default function SearchBar({ onSearch, className = "" }: SearchBarProps) 
             <SelectValue placeholder="Any Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Any Category</SelectItem>
+            <SelectItem value="any-category">Any Category</SelectItem>
             <SelectItem value="Meeting Rooms">Meeting Rooms</SelectItem>
             <SelectItem value="Event Halls">Event Halls</SelectItem>
             <SelectItem value="Creative Studios">Creative Studios</SelectItem>

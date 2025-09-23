@@ -30,6 +30,15 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/search" component={Search} />
+        
+        {/* More specific routes must come first */}
+        {isAuthenticated && (user?.role === 'host' || user?.role === 'admin') && (
+          <>
+            <Route path="/venues/create" component={VenueForm} />
+            <Route path="/venues/:id/edit" component={VenueForm} />
+          </>
+        )}
+        
         <Route path="/venues/:id" component={VenueDetail} />
         <Route path="/book/:venueId" component={Booking} />
         

@@ -156,14 +156,14 @@ export default function Search() {
               <div className="mb-6">
                 <label className="block text-sm font-medium text-foreground mb-3">Capacity</label>
                 <Select 
-                  value={filters.capacityMin?.toString() || ''} 
-                  onValueChange={(value) => handleFilterChange('capacityMin', value ? parseInt(value) : undefined)}
+                  value={filters.capacityMin?.toString() || 'any'} 
+                  onValueChange={(value) => handleFilterChange('capacityMin', (value && value !== 'any') ? parseInt(value) : undefined)}
                 >
                   <SelectTrigger data-testid="capacity-filter">
                     <SelectValue placeholder="Any size" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any size</SelectItem>
+                    <SelectItem value="any">Any size</SelectItem>
                     <SelectItem value="1">1-10 people</SelectItem>
                     <SelectItem value="11">11-50 people</SelectItem>
                     <SelectItem value="51">51-100 people</SelectItem>
