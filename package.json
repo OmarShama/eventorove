@@ -4,11 +4,13 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
+    "dev": "NODE_ENV=development tsx server/src/main.ts",
+    "build": "vite build && esbuild server/src/main.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/main.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "typeorm:gen": "typeorm migration:generate -d server/src/db/data-source.ts server/src/migrations/Init",
+    "typeorm:run": "typeorm migration:run -d server/src/db/data-source.ts",
+    "typeorm:revert": "typeorm migration:revert -d server/src/db/data-source.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.1",
