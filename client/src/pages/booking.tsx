@@ -46,13 +46,13 @@ export default function Booking() {
     );
   }
 
-  const formatDateTime = (date: string) => {
+  const formatDateTime = (date: Date | string) => {
     return formatInTimeZone(new Date(date), CAIRO_TIMEZONE, "PPP 'at' p");
   };
 
   const addToCalendar = () => {
-    const start = new Date(booking.startDateTime);
-    const end = new Date(booking.endDateTime);
+    const start = booking.startDateTime instanceof Date ? booking.startDateTime : new Date(booking.startDateTime);
+    const end = booking.endDateTime instanceof Date ? booking.endDateTime : new Date(booking.endDateTime);
     
     const startStr = start.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endStr = end.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
