@@ -1,6 +1,10 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { useRouter } from "next/router";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,8 +19,32 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { isAuthenticated, user } = useAuth();
-  const [location] = useLocation();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const router = useRouter();
+  const location = router.pathname;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const logoutMutation = useMutation({
+    mutationFn: authApi.logout,
+    onSuccess: () => {
+      // Clear token from localStorage
+      localStorage.removeItem('token');
+      // Refresh the page to reset auth state
+      window.location.reload();
+    },
+    onError: (error) => {
+      console.error('Logout error:', error);
+      // Even if logout fails on server, clear local state
+      localStorage.removeItem('token');
+      // Refresh the page to reset auth state
+      window.location.reload();
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const getInitials = (firstName?: string, lastName?: string) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'U';
@@ -34,27 +62,33 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="text-2xl font-bold text-primary">Stagea</span>
               </Link>
             </div>
-            
+
             <div className="hidden md:block">
               <div className="flex items-center space-x-8">
-                <Link 
-                  href="/search" 
-                  className="text-foreground hover:text-primary transition-colors"
+                <Link
+                  href="/search"
+                  className={`transition-colors ${location.startsWith('/search')
+                    ? 'text-primary font-medium'
+                    : 'text-foreground hover:text-primary'
+                    }`}
                   data-testid="nav-explore"
                 >
                   Explore
                 </Link>
-                {isAuthenticated && user?.role === 'host' && (
-                  <Link 
-                    href="/host/dashboard" 
-                    className="text-foreground hover:text-primary transition-colors"
+                {!isLoading && isAuthenticated && user?.role === 'host' && (
+                  <Link
+                    href="/host/dashboard"
+                    className={`transition-colors ${location.startsWith('/host')
+                      ? 'text-primary font-medium'
+                      : 'text-foreground hover:text-primary'
+                      }`}
                     data-testid="nav-host-dashboard"
                   >
                     Host Dashboard
                   </Link>
                 )}
-                <a 
-                  href="#help" 
+                <a
+                  href="#help"
                   className="text-foreground hover:text-primary transition-colors"
                   data-testid="nav-help"
                 >
@@ -62,12 +96,12 @@ export default function Layout({ children }: LayoutProps) {
                 </a>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              {isAuthenticated && user?.role === 'admin' && (
+              {!isLoading && isAuthenticated && user?.role === 'admin' && (
                 <Link href="/admin/dashboard">
-                  <Button 
-                    variant="secondary" 
+                  <Button
+                    variant="secondary"
                     size="sm"
                     data-testid="nav-admin-dashboard"
                   >
@@ -75,8 +109,15 @@ export default function Layout({ children }: LayoutProps) {
                   </Button>
                 </Link>
               )}
-              
-              {isAuthenticated ? (
+
+              {isLoading ? (
+                // Show loading state to prevent hydration mismatch
+                <div className="flex items-center space-x-2">
+                  <Button variant="ghost" size="sm" disabled>
+                    Loading...
+                  </Button>
+                </div>
+              ) : isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="p-2" data-testid="user-menu-trigger">
@@ -100,18 +141,22 @@ export default function Layout({ children }: LayoutProps) {
                         </DropdownMenuItem>
                       </>
                     )}
-                    <DropdownMenuItem asChild>
-                      <a href="/api/logout" data-testid="nav-logout">Logout</a>
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      data-testid="nav-logout"
+                      disabled={logoutMutation.isPending}
+                    >
+                      {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <div className="flex items-center space-x-2">
                   <Button variant="ghost" size="sm" asChild data-testid="nav-login">
-                    <a href="/api/login">Login</a>
+                    <Link href="/login">Login</Link>
                   </Button>
                   <Button size="sm" asChild data-testid="nav-signup">
-                    <a href="/api/login">Sign Up</a>
+                    <Link href="/register">Sign Up</Link>
                   </Button>
                 </div>
               )}

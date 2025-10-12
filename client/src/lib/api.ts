@@ -1,10 +1,5 @@
 import { apiRequest } from "./queryClient";
-
-export interface ApiResponse<T = any> {
-  data?: T;
-  message?: string;
-  error?: string;
-}
+import { User, ApiResponse, LoginResponse } from "@/types/api";
 
 export class ApiClient {
   private baseUrl: string;
@@ -14,15 +9,24 @@ export class ApiClient {
   }
 
   async get<T>(endpoint: string): Promise<T> {
+    const headers: Record<string, string> = {};
+
+    // Add Authorization header if we have a token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      headers,
       credentials: 'include',
     });
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`${response.status}: ${error}`);
     }
-    
+
     return response.json();
   }
 
@@ -57,38 +61,38 @@ export const venueApi = {
     });
     return apiClient.get(`/venues/search?${params}`);
   },
-  
+
   getById: (id: string) => apiClient.get(`/venues/${id}`),
-  
+
   create: (venueData: any) => apiClient.post('/venues', venueData),
-  
+
   update: (id: string, venueData: any) => apiClient.patch(`/venues/${id}`, venueData),
-  
+
   checkAvailability: (id: string, start: string, durationMinutes: number) => {
     const params = new URLSearchParams({ start, durationMinutes: durationMinutes.toString() });
     return apiClient.get(`/venues/${id}/availability?${params}`);
   },
-  
+
   getHostVenues: () => apiClient.get('/host/venues'),
-  
-  addImage: (id: string, imageURL: string) => 
+
+  addImage: (id: string, imageURL: string) =>
     apiClient.post(`/venues/${id}/images`, { imageURL }),
-  
-  addAmenity: (id: string, name: string) => 
+
+  addAmenity: (id: string, name: string) =>
     apiClient.post(`/venues/${id}/amenities`, { name }),
-  
-  addPackage: (id: string, packageData: any) => 
+
+  addPackage: (id: string, packageData: any) =>
     apiClient.post(`/venues/${id}/packages`, packageData),
 };
 
 // Booking API methods
 export const bookingApi = {
   create: (bookingData: any) => apiClient.post('/bookings', bookingData),
-  
+
   getById: (id: string) => apiClient.get(`/bookings/${id}`),
-  
+
   getMyBookings: () => apiClient.get('/bookings/me'),
-  
+
   getHostBookings: () => apiClient.get('/host/bookings'),
 };
 
@@ -98,17 +102,34 @@ export const adminApi = {
     const params = status ? `?status=${status}` : '';
     return apiClient.get(`/admin/venues${params}`);
   },
-  
+
   approveVenue: (id: string) => apiClient.patch(`/admin/venues/${id}/approve`),
-  
+
   rejectVenue: (id: string) => apiClient.patch(`/admin/venues/${id}/reject`),
-  
+
   getStats: () => apiClient.get('/admin/stats'),
-  
+
   getBookings: () => apiClient.get('/admin/bookings'),
 };
 
 // Upload API methods
 export const uploadApi = {
   getUploadUrl: (venueId: string) => apiClient.post(`/venues/${venueId}/images/upload`),
+};
+
+// Authentication API methods
+export const authApi = {
+  getCurrentUser: () => apiClient.get<ApiResponse<User>>('/auth/user'),
+
+  login: (email: string, password: string) =>
+    apiClient.post<ApiResponse<LoginResponse>>('/auth/login', { email, password }),
+
+  register: (userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }) => apiClient.post<ApiResponse<User>>('/auth/register', userData),
+
+  logout: () => apiClient.post('/auth/logout'),
 };

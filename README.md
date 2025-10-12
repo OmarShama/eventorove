@@ -90,21 +90,21 @@ npm start
 ## Project Structure
 
 ```
-├── client/              # Next.js frontend
+├── client/              # React frontend (Vite)
 │   └── src/
 │       ├── components/  # React components
 │       ├── hooks/       # Custom hooks
 │       ├── lib/         # Utilities
-│       └── pages/       # Next.js pages
-├── server/              # NestJS backend
-│   └── src/
-│       ├── db/         # Database configuration
-│       ├── migrations/ # TypeORM migrations
-│       ├── users/     # Users module
-│       ├── venues/    # Venues module
-│       └── bookings/  # Bookings module
-└── shared/             # Shared types and utilities
-    └── types/         # TypeScript interfaces
+│       ├── pages/       # Application pages
+│       └── types/       # Frontend TypeScript types
+└── server/              # NestJS backend
+    └── src/
+        ├── shared/      # Backend types and schemas
+        ├── db/          # Database configuration
+        ├── migrations/  # TypeORM migrations
+        ├── users/       # Users module
+        ├── venues/      # Venues module
+        └── bookings/    # Bookings module
 ```
 
 ## Technologies
@@ -116,7 +116,7 @@ npm start
   - TypeScript
 
 - Frontend:
-  - Next.js
+  - React (Vite)
   - React Query
   - TailwindCSS
   - TypeScript
@@ -129,3 +129,4 @@ npm start
 - Image uploads
 - Google Maps integration
 - TypeScript end-to-end
+- Separate frontend and backend services communicating via REST API

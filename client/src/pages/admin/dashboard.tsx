@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useRouter } from "next/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useEffect } from "react";
-import { VenueWithDetails, BookingWithDetails } from "@shared/schema";
+import { VenueWithDetails, BookingWithDetails, AdminStats } from "@/types/api";
+import { getWithAuth, patchWithAuth } from "@/lib/authUtils";
 
 export default function AdminDashboard() {
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -24,58 +24,36 @@ export default function AdminDashboard() {
         description: "You need admin privileges to access this page.",
         variant: "destructive",
       });
-      setLocation('/');
+      router.push('/');
     }
-  }, [authLoading, isAuthenticated, user, toast, setLocation]);
+  }, [authLoading, isAuthenticated, user, toast, router.push]);
 
   const { data: pendingVenues, isLoading: pendingLoading } = useQuery<VenueWithDetails[]>({
     queryKey: ['/api/admin/venues', 'pending_approval'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/venues?status=pending_approval');
-      if (!response.ok) throw new Error('Failed to fetch pending venues');
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/admin/venues?status=pending_approval'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const { data: allVenues, isLoading: allVenuesLoading } = useQuery<VenueWithDetails[]>({
     queryKey: ['/api/admin/venues'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/venues');
-      if (!response.ok) throw new Error('Failed to fetch all venues');
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/admin/venues'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ['/api/admin/bookings'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/bookings');
-      if (!response.ok) throw new Error('Failed to fetch bookings');
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/admin/bookings'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ['/api/admin/stats'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/stats');
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/admin/stats'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const approveVenueMutation = useMutation({
-    mutationFn: async (venueId: string) => {
-      const response = await fetch(`/api/admin/venues/${venueId}/approve`, {
-        method: 'PATCH',
-      });
-      if (!response.ok) throw new Error('Failed to approve venue');
-      return response.json();
-    },
+    mutationFn: (venueId: string) => patchWithAuth(`/api/admin/venues/${venueId}/approve`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/venues'] });
       toast({
@@ -93,13 +71,7 @@ export default function AdminDashboard() {
   });
 
   const rejectVenueMutation = useMutation({
-    mutationFn: async (venueId: string) => {
-      const response = await fetch(`/api/admin/venues/${venueId}/reject`, {
-        method: 'PATCH',
-      });
-      if (!response.ok) throw new Error('Failed to reject venue');
-      return response.json();
-    },
+    mutationFn: (venueId: string) => patchWithAuth(`/api/admin/venues/${venueId}/reject`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/venues'] });
       toast({
@@ -150,9 +122,9 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setLocation('/')}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/')}
                 data-testid="back-to-home"
               >
                 <i className="fas fa-arrow-left"></i>
@@ -160,6 +132,12 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-semibold text-foreground">Admin Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <Button
+                onClick={() => router.push('/host/venues/new')}
+                data-testid="admin-create-venue-button"
+              >
+                <i className="fas fa-plus mr-2"></i>Create Venue
+              </Button>
               <span className="text-sm text-muted-foreground">Logged in as Admin</span>
               <div className="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
                 <span className="text-destructive-foreground text-sm font-medium">A</span>
@@ -259,7 +237,7 @@ export default function AdminDashboard() {
                         <div className="flex items-start space-x-4">
                           <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0 bg-cover bg-center">
                             {venue.images?.[0] ? (
-                              <img 
+                              <img
                                 src={venue.images[0].path}
                                 alt={venue.title}
                                 className="w-full h-full object-cover rounded-xl"
@@ -321,9 +299,9 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setLocation(`/venues/${venue.id}`)}
+                                  onClick={() => router.push(`/admin/venues/${venue.id}/approve`)}
                                 >
-                                  View Details
+                                  Review
                                 </Button>
                               </div>
                             </div>
@@ -351,17 +329,21 @@ export default function AdminDashboard() {
                 <CardTitle>All Venues</CardTitle>
               </CardHeader>
               <CardContent>
-                {allVenues && allVenues.length > 0 ? (
+                {allVenuesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : allVenues && allVenues.length > 0 ? (
                   <div className="space-y-4">
                     {allVenues.slice(0, 20).map((venue) => (
-                      <div 
+                      <div
                         key={venue.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 rounded-lg bg-muted flex-shrink-0">
                             {venue.images?.[0] ? (
-                              <img 
+                              <img
                                 src={venue.images[0].path}
                                 alt={venue.title}
                                 className="w-full h-full object-cover rounded-lg"
@@ -407,10 +389,14 @@ export default function AdminDashboard() {
                 <CardTitle>Recent Bookings</CardTitle>
               </CardHeader>
               <CardContent>
-                {bookings && bookings.length > 0 ? (
+                {bookingsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : bookings && bookings.length > 0 ? (
                   <div className="space-y-4">
                     {bookings.slice(0, 20).map((booking) => (
-                      <div 
+                      <div
                         key={booking.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg"
                       >

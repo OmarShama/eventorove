@@ -18,19 +18,19 @@ export class Venue {
     @ManyToOne(() => User, u => u.venues, { eager: true })
     host: User;
 
-    @Column({ length: 160 })
+    @Column({ type: 'varchar', length: 160 })
     title: string;
 
     @Column('text')
     description: string;
 
-    @Column({ length: 60 })
+    @Column({ type: 'varchar', length: 60 })
     category: string;
 
-    @Column({ length: 200 })
+    @Column({ type: 'varchar', length: 200 })
     address: string;
 
-    @Column({ length: 80 })
+    @Column({ type: 'varchar', length: 80 })
     city: string;
 
     @Column('float', { nullable: true })
@@ -54,7 +54,7 @@ export class Venue {
     @Column('int', { default: 0 })
     baseHourlyPriceEGP: number;
 
-    @Column({ length: 30, default: 'pending_approval' })
+    @Column({ type: 'varchar', length: 30, default: 'pending_approval' })
     status: VenueStatus;
 
     @OneToMany(() => VenueImage, i => i.venue, { cascade: true })

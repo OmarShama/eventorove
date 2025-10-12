@@ -1,0 +1,12 @@
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/_document": "pages/_document.js",
+  "/": "pages/index.js",
+  "/host/venues/new": "pages/host/venues/new.js",
+  "/search": "pages/search.js",
+  "/login": "pages/login.js",
+  "/host/dashboard": "pages/host/dashboard.js",
+  "/admin/dashboard": "pages/admin/dashboard.js",
+  "/admin/venues/[id]/approve": "pages/admin/venues/[id]/approve.js"
+}

@@ -6,27 +6,36 @@ export type BookingStatus = 'confirmed' | 'cancelled';
 
 @Entity('bookings')
 export class Booking {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @ManyToOne(() => Venue, v => v.bookings, { eager: true })
-  venue: Venue;
+    @ManyToOne(() => Venue, v => v.bookings, { eager: true })
+    venue: Venue;
 
-  @ManyToOne(() => User, u => u.bookings, { eager: true })
-  guest: User;
+    @ManyToOne(() => User, u => u.bookings, { eager: true })
+    guest: User;
 
-  @Column({ type: 'timestamptz' })
-  startDateTime: Date;
+    @Column({ type: 'timestamptz' })
+    startDateTime: Date;
 
-  @Column({ type: 'timestamptz' })
-  endDateTime: Date;
+    @Column({ type: 'timestamptz' })
+    endDateTime: Date;
 
-  @Column({ length: 20, default: 'confirmed' })
-  status: BookingStatus;
+    @Column({ type: 'varchar', length: 20, default: 'confirmed' })
+    status: BookingStatus;
 
-  @Column('int')
-  totalPriceEGP: number;
+    @Column('int')
+    totalPriceEGP: number;
 
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
+    @Column('int')
+    guestCount: number;
+
+    @Column('text', { nullable: true })
+    specialRequests: string;
+
+    @CreateDateColumn({ type: 'timestamptz' })
+    createdAt: Date;
+
+    @CreateDateColumn({ type: 'timestamptz' })
+    updatedAt: Date;
 }

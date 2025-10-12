@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { VenueWithDetails } from "@shared/schema";
+import { VenueWithDetails } from "@/types/api";
 
 interface MapViewProps {
   venues?: VenueWithDetails[];

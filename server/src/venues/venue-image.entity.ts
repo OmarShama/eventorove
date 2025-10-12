@@ -4,18 +4,21 @@ import { Venue } from './venue.entity';
 @Entity('venue_images')
 @Index(['venueId', 'order'])
 export class VenueImage {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column('uuid')
-  venueId: string;
+    @Column('uuid')
+    venueId: string;
 
-  @ManyToOne(() => Venue, v => v.images)
-  venue: Venue;
+    @ManyToOne(() => Venue, v => v.images)
+    venue: Venue;
 
-  @Column({ length: 255 })
-  url: string;
+    @Column({ type: 'varchar', length: 255 })
+    url: string;
 
-  @Column('int')
-  order: number;
+    @Column('int')
+    order: number;
+
+    @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+    createdAt: Date;
 }

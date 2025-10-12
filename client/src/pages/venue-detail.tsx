@@ -1,8 +1,7 @@
-import { useParams, useLocation } from "wouter";
+import { useRouter } from "next/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import DateTimeRangePicker from "@/components/DateTimeRangePicker";
@@ -10,11 +9,11 @@ import MapView from "@/components/MapView";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { VenueWithDetails } from "@shared/schema";
+import { VenueWithDetails } from "@/types/api";
 
 export default function VenueDetail() {
-  const params = useParams();
-  const [, setLocation] = useLocation();
+  const router = useRouter();
+  const params = router.query;
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,12 +39,12 @@ export default function VenueDetail() {
     queryKey: ['/api/venues', venueId, 'availability', startDateTime, durationMinutes],
     queryFn: async () => {
       if (!startDateTime) return null;
-      
+
       const params = new URLSearchParams({
         start: startDateTime.toISOString(),
         durationMinutes: durationMinutes.toString(),
       });
-      
+
       const response = await fetch(`/api/venues/${venueId}/availability?${params}`);
       if (!response.ok) {
         throw new Error('Failed to check availability');
@@ -82,7 +81,7 @@ export default function VenueDetail() {
     },
     onSuccess: (booking) => {
       queryClient.invalidateQueries({ queryKey: ['/api/venues', venueId, 'availability'] });
-      setLocation(`/booking/${booking.id}`);
+      router.push(`/booking/${booking.id}`);
       toast({
         title: "Booking Confirmed!",
         description: "Your venue has been successfully booked.",
@@ -100,7 +99,7 @@ export default function VenueDetail() {
         }, 1000);
         return;
       }
-      
+
       toast({
         title: "Booking Failed",
         description: (error as Error).message,
@@ -167,7 +166,7 @@ export default function VenueDetail() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-2">Venue Not Found</h1>
           <p className="text-muted-foreground mb-4">The venue you're looking for doesn't exist.</p>
-          <Button onClick={() => setLocation('/search')}>
+          <Button onClick={() => router.push('/search')}>
             Back to Search
           </Button>
         </div>
@@ -175,7 +174,7 @@ export default function VenueDetail() {
     );
   }
 
-  const mainImage = venue.images?.[0]?.path || "https://images.unsplash.com/photo-1497366811353-6870744d04b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
+  const mainImage = venue.images?.[0]?.path || "https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
 
   return (
     <div>
@@ -184,9 +183,9 @@ export default function VenueDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setLocation('/search')}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/search')}
                 data-testid="back-to-search"
               >
                 <i className="fas fa-arrow-left"></i>
@@ -217,8 +216,8 @@ export default function VenueDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
           <div className="relative rounded-2xl overflow-hidden aspect-video lg:aspect-square">
-            <img 
-              src={mainImage} 
+            <img
+              src={mainImage}
               alt={venue.title}
               className="w-full h-full object-cover"
             />
@@ -226,8 +225,8 @@ export default function VenueDetail() {
           <div className="grid grid-cols-2 gap-4">
             {venue.images?.slice(1, 5).map((image, index) => (
               <div key={index} className="relative rounded-xl overflow-hidden aspect-square">
-                <img 
-                  src={image.path} 
+                <img
+                  src={image.path}
                   alt={`${venue.title} ${index + 2}`}
                   className="w-full h-full object-cover"
                 />
@@ -351,12 +350,12 @@ export default function VenueDetail() {
                     minBookingMinutes={venue.minBookingMinutes || 30}
                     maxBookingMinutes={venue.maxBookingMinutes || undefined}
                   />
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Number of Guests
                     </label>
-                    <select 
+                    <select
                       value={guestCount}
                       onChange={(e) => setGuestCount(parseInt(e.target.value))}
                       className="w-full p-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
@@ -419,8 +418,8 @@ export default function VenueDetail() {
                 <Button
                   onClick={handleBooking}
                   disabled={
-                    !startDateTime || 
-                    !availability?.available || 
+                    !startDateTime ||
+                    !availability?.available ||
                     checkingAvailability ||
                     bookingMutation.isPending
                   }
@@ -437,8 +436,8 @@ export default function VenueDetail() {
                   )}
                 </Button>
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full mt-3"
                   data-testid="contact-host-button"
                 >

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/router";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import SearchBar from "@/components/SearchBar";
 import VenueCard from "@/components/VenueCard";
-import { VenueSearchFilters } from "@shared/schema";
+import EmptyState from "@/components/EmptyState";
+import { VenueSearchRequest } from "@/types/api";
 
 export default function Search() {
-  const [location, setLocation] = useLocation();
-  const [filters, setFilters] = useState<VenueSearchFilters>({
+  const router = useRouter();
+  const [filters, setFilters] = useState<VenueSearchRequest>({
     page: 1,
     limit: 20,
   });
 
   // Parse URL parameters on mount
   useEffect(() => {
+    if (typeof window === 'undefined') return; // SSR safety check
     const urlParams = new URLSearchParams(window.location.search);
-    const initialFilters: VenueSearchFilters = {
+    const initialFilters: VenueSearchRequest = {
       page: 1,
       limit: 20,
     };
@@ -45,19 +48,20 @@ export default function Search() {
           params.set(key, value.toString());
         }
       });
-      
+
       const response = await fetch(`/api/venues/search?${params}`);
       if (!response.ok) {
         throw new Error('Failed to search venues');
       }
-      return response.json();
+      const result = await response.json();
+      return result.data; // Extract the data from the API response
     },
   });
 
-  const handleSearch = (newFilters: Partial<VenueSearchFilters>) => {
+  const handleSearch = (newFilters: Partial<VenueSearchRequest>) => {
     const updatedFilters = { ...filters, ...newFilters, page: 1 };
     setFilters(updatedFilters);
-    
+
     // Update URL
     const params = new URLSearchParams();
     Object.entries(updatedFilters).forEach(([key, value]) => {
@@ -65,15 +69,15 @@ export default function Search() {
         params.set(key, value.toString());
       }
     });
-    setLocation(`/search?${params.toString()}`);
+    router.push(`/search?${params.toString()}`);
   };
 
-  const handleFilterChange = (key: keyof VenueSearchFilters, value: any) => {
+  const handleFilterChange = (key: keyof VenueSearchRequest, value: any) => {
     handleSearch({ [key]: value });
   };
 
   const handleLoadMore = () => {
-    setFilters(prev => ({ ...prev, page: prev.page + 1 }));
+    setFilters(prev => ({ ...prev, page: (prev.page || 1) + 1 }));
   };
 
   if (error) {
@@ -94,13 +98,14 @@ export default function Search() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setLocation('/')}
-                data-testid="back-button"
-              >
-                <i className="fas fa-arrow-left"></i>
-              </Button>
+              <Link href="/">
+                <Button
+                  variant="ghost"
+                  data-testid="back-button"
+                >
+                  <i className="fas fa-arrow-left"></i>
+                </Button>
+              </Link>
               <h1 className="text-2xl font-semibold text-foreground">Search Results</h1>
               {searchResults && (
                 <span className="text-muted-foreground" data-testid="results-count">
@@ -108,7 +113,7 @@ export default function Search() {
                 </span>
               )}
             </div>
-            <Button 
+            <Button
               variant="outline"
               className="lg:hidden"
               data-testid="mobile-filters-button"
@@ -116,7 +121,7 @@ export default function Search() {
               <i className="fas fa-filter mr-2"></i>Filters
             </Button>
           </div>
-          
+
           <SearchBar onSearch={handleSearch} />
         </div>
       </div>
@@ -127,7 +132,7 @@ export default function Search() {
           <div className="hidden lg:block w-80 flex-shrink-0">
             <div className="bg-card rounded-2xl p-6 shadow-sm border border-border sticky top-24">
               <h3 className="text-xl font-semibold text-foreground mb-6">Filters</h3>
-              
+
               {/* Price Range */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-foreground mb-3">
@@ -155,8 +160,8 @@ export default function Search() {
               {/* Capacity */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-foreground mb-3">Capacity</label>
-                <Select 
-                  value={filters.capacityMin?.toString() || 'any'} 
+                <Select
+                  value={filters.capacityMin?.toString() || 'any'}
                   onValueChange={(value) => handleFilterChange('capacityMin', (value && value !== 'any') ? parseInt(value) : undefined)}
                 >
                   <SelectTrigger data-testid="capacity-filter">
@@ -190,8 +195,8 @@ export default function Search() {
                         }}
                         data-testid={`amenity-${amenity.toLowerCase().replace(/\s+/g, '-')}`}
                       />
-                      <label 
-                        htmlFor={amenity} 
+                      <label
+                        htmlFor={amenity}
                         className="text-sm text-foreground cursor-pointer"
                       >
                         {amenity}
@@ -201,7 +206,7 @@ export default function Search() {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 className="w-full"
                 onClick={() => setFilters({ page: 1, limit: 20 })}
                 data-testid="clear-filters-button"
@@ -216,14 +221,14 @@ export default function Search() {
             {/* View Toggle */}
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center space-x-4">
-                <Button 
+                <Button
                   variant="default"
                   size="sm"
                   data-testid="list-view-button"
                 >
                   List
                 </Button>
-                <Button 
+                <Button
                   variant="secondary"
                   size="sm"
                   data-testid="map-view-button"
@@ -231,7 +236,7 @@ export default function Search() {
                   Map
                 </Button>
               </div>
-              <Select value="best-match" onValueChange={() => {}}>
+              <Select value="best-match" onValueChange={() => { }}>
                 <SelectTrigger className="w-48" data-testid="sort-select">
                   <SelectValue />
                 </SelectTrigger>
@@ -252,7 +257,7 @@ export default function Search() {
             )}
 
             {/* Venue Grid */}
-            {searchResults && (
+            {searchResults && searchResults.venues && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8" data-testid="venues-grid">
                   {searchResults.venues.map((venue: any) => (
@@ -275,13 +280,62 @@ export default function Search() {
 
                 {/* No Results */}
                 {searchResults.venues.length === 0 && (
-                  <div className="text-center py-12">
-                    <i className="fas fa-search text-4xl text-muted-foreground mb-4"></i>
-                    <h3 className="text-xl font-semibold text-foreground mb-2">No venues found</h3>
-                    <p className="text-muted-foreground">Try adjusting your search criteria or filters.</p>
-                  </div>
+                  <EmptyState
+                    icon="fas fa-search"
+                    title="No venues found"
+                    description="We couldn't find any venues matching your criteria. Try adjusting your search or explore different options."
+                    actions={[
+                      {
+                        label: "Clear All Filters",
+                        variant: "outline",
+                        icon: "fas fa-refresh",
+                        onClick: () => {
+                          // Clear all filters
+                          if (typeof window !== 'undefined') {
+                            const newUrl = new URL(window.location.href);
+                            newUrl.search = '';
+                            window.history.pushState({}, '', newUrl.toString());
+                            window.location.reload();
+                          }
+                        }
+                      },
+                      {
+                        label: "Back to Home",
+                        variant: "default",
+                        icon: "fas fa-home",
+                        onClick: () => router.push('/')
+                      }
+                    ]}
+                  />
                 )}
               </>
+            )}
+
+            {/* Handle case where searchResults exists but venues is undefined */}
+            {searchResults && !searchResults.venues && (
+              <EmptyState
+                icon="fas fa-exclamation-triangle"
+                title="Error loading venues"
+                description="There was an issue loading the venue data. Please try again."
+                actions={[
+                  {
+                    label: "Retry Search",
+                    variant: "default",
+                    icon: "fas fa-refresh",
+                    onClick: () => {
+                      if (typeof window !== 'undefined') {
+                        window.location.reload();
+                      }
+                    }
+                  },
+                  {
+                    label: "Back to Home",
+                    variant: "outline",
+                    icon: "fas fa-home",
+                    onClick: () => router.push('/')
+                  }
+                ]}
+              />
             )}
           </div>
         </div>

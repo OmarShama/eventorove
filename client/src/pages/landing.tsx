@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import SearchBar from "@/components/SearchBar";
 
 const categories = [
   {
@@ -27,12 +26,12 @@ const categories = [
     name: "Outdoor Spaces",
     description: "Beautiful open-air venues",
     icon: "fas fa-tree",
-    image: "https://images.unsplash.com/photo-1518281420589-3c4c6f6b4b57?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
   }
 ];
 
 export default function Landing() {
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDateTime, setSelectedDateTime] = useState("");
 
@@ -40,29 +39,29 @@ export default function Landing() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (selectedDateTime) params.set('availableAt', selectedDateTime);
-    
-    setLocation(`/search?${params.toString()}`);
+
+    router.push(`/search?${params.toString()}`);
   };
 
   const handleCategoryClick = (category: string) => {
-    setLocation(`/search?category=${encodeURIComponent(category)}`);
+    router.push(`/search?category=${encodeURIComponent(category)}`);
   };
 
   return (
     <div>
       {/* Hero Section */}
       <div className="relative min-h-screen flex items-center justify-center">
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1539650116574-75c0c6d0c0c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80')",
+            backgroundImage: "url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80')",
             backgroundSize: "cover",
             backgroundPosition: "center"
           }}
         >
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         </div>
-        
+
         <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-4">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Find Your Perfect
@@ -71,7 +70,7 @@ export default function Landing() {
           <p className="text-xl md:text-2xl mb-12 text-gray-200 max-w-2xl mx-auto">
             Discover and book premium venues instantly across Cairo. From elegant halls to creative studios.
           </p>
-          
+
           {/* Search Bar */}
           <div className="bg-white rounded-2xl p-4 shadow-2xl max-w-4xl mx-auto">
             <div className="flex flex-col md:flex-row gap-4">
@@ -112,7 +111,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          
+
           {/* Quick Stats */}
           <div className="flex justify-center space-x-8 mt-12 text-sm text-gray-300">
             <div className="flex items-center">
@@ -138,16 +137,16 @@ export default function Landing() {
             <h2 className="text-4xl font-bold text-foreground mb-4">Explore by Category</h2>
             <p className="text-xl text-muted-foreground">Discover the perfect space for every occasion</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {categories.map((category, index) => (
-              <div 
+              <div
                 key={index}
                 className="group cursor-pointer"
                 onClick={() => handleCategoryClick(category.name)}
                 data-testid={`category-${index}`}
               >
-                <div 
+                <div
                   className="relative rounded-2xl overflow-hidden mb-4 aspect-square"
                   style={{
                     backgroundImage: `url('${category.image}')`,
@@ -177,7 +176,7 @@ export default function Landing() {
             <h2 className="text-4xl font-bold text-foreground mb-4">How Stagea Works</h2>
             <p className="text-xl text-muted-foreground">Book your perfect venue in minutes</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             <div className="text-center">
               <div className="bg-primary rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
@@ -188,7 +187,7 @@ export default function Landing() {
                 Browse thousands of verified venues with photos, amenities, and real-time availability.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="bg-secondary rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
                 <i className="fas fa-calendar-check text-white text-2xl"></i>
@@ -198,7 +197,7 @@ export default function Landing() {
                 Select your time slot and confirm your booking immediately. No waiting for approval.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="bg-accent rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
                 <i className="fas fa-handshake text-accent-foreground text-2xl"></i>

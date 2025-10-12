@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation } from "wouter";
+import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,14 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { postWithAuth, patchWithAuth, isUnauthorizedError } from "@/lib/authUtils";
 import type { UploadResult } from "@uppy/core";
 
 const venueFormSchema = z.object({
@@ -38,7 +37,7 @@ type VenueFormData = z.infer<typeof venueFormSchema>;
 
 const categories = [
   "Meeting Rooms",
-  "Event Halls", 
+  "Event Halls",
   "Creative Studios",
   "Outdoor Spaces",
   "Conference Centers",
@@ -49,7 +48,7 @@ const categories = [
 
 const cities = [
   "New Cairo",
-  "Heliopolis", 
+  "Heliopolis",
   "Zamalek",
   "Maadi",
   "Dokki",
@@ -59,8 +58,8 @@ const cities = [
 ];
 
 export default function VenueForm() {
-  const params = useParams();
-  const [, setLocation] = useLocation();
+  const router = useRouter();
+  const params = router.query;
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -78,9 +77,9 @@ export default function VenueForm() {
         description: "You need to be a host to create venues.",
         variant: "destructive",
       });
-      setLocation('/');
+      router.push('/');
     }
-  }, [isAuthenticated, user, toast, setLocation]);
+  }, [isAuthenticated, user, toast, router.push]);
 
   const form = useForm<VenueFormData>({
     resolver: zodResolver(venueFormSchema),
@@ -138,38 +137,30 @@ export default function VenueForm() {
 
   const createVenueMutation = useMutation({
     mutationFn: async (data: VenueFormData) => {
-      const response = await fetch('/api/venues', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          status: 'pending_approval',
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create venue');
-      }
-
-      return response.json();
+      return postWithAuth('/api/venues', data);
     },
     onSuccess: async (newVenue) => {
-      // Add amenities
-      for (const amenity of amenities) {
-        await fetch(`/api/venues/${newVenue.id}/amenities`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: amenity }),
-        });
-      }
+      try {
+        // Add amenities using auth utilities
+        for (const amenity of amenities) {
+          await postWithAuth(`/api/venues/${newVenue.id}/amenities`, { name: amenity });
+        }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
-      toast({
-        title: "Venue Created",
-        description: "Your venue has been submitted for review.",
-      });
-      setLocation('/host/dashboard');
+        queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
+        toast({
+          title: "Venue Created",
+          description: "Your venue has been submitted for review.",
+        });
+        router.push('/host/dashboard');
+      } catch (error) {
+        console.error('Error adding amenities:', error);
+        // Still show success for venue creation, but log amenity error
+        toast({
+          title: "Venue Created",
+          description: "Your venue has been created, but there was an issue adding some amenities.",
+        });
+        router.push('/host/dashboard');
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -214,7 +205,7 @@ export default function VenueForm() {
         title: "Venue Updated",
         description: "Your venue has been updated successfully.",
       });
-      setLocation('/host/dashboard');
+      router.push('/host/dashboard');
     },
     onError: (error) => {
       toast({
@@ -229,11 +220,11 @@ export default function VenueForm() {
     const response = await fetch(`/api/venues/${params.id || 'temp'}/images/upload`, {
       method: 'POST',
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to get upload URL');
     }
-    
+
     const { uploadURL } = await response.json();
     return {
       method: 'PUT' as const,
@@ -241,10 +232,10 @@ export default function VenueForm() {
     };
   };
 
-  const handleUploadComplete = async (result: UploadResult) => {
-    if (result.successful.length > 0) {
+  const handleUploadComplete = async (result: UploadResult<any, any>) => {
+    if (result.successful && result.successful.length > 0) {
       const imageURL = result.successful[0].uploadURL;
-      
+
       try {
         const response = await fetch(`/api/venues/${params.id}/images`, {
           method: 'POST',
@@ -300,9 +291,9 @@ export default function VenueForm() {
       <div className="bg-white shadow-sm border-b border-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => setLocation('/host/dashboard')}
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/host/dashboard')}
               data-testid="back-to-dashboard"
             >
               <i className="fas fa-arrow-left"></i>
@@ -330,10 +321,10 @@ export default function VenueForm() {
                     <FormItem>
                       <FormLabel>Venue Title *</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder="e.g., Executive Conference Center"
                           data-testid="venue-title-input"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -348,11 +339,11 @@ export default function VenueForm() {
                     <FormItem>
                       <FormLabel>Description *</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Describe your venue, its features, and what makes it special..."
                           rows={4}
                           data-testid="venue-description-input"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -391,7 +382,7 @@ export default function VenueForm() {
                       <FormItem>
                         <FormLabel>Capacity *</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             placeholder="Maximum number of guests"
                             data-testid="venue-capacity-input"
@@ -420,10 +411,10 @@ export default function VenueForm() {
                     <FormItem>
                       <FormLabel>Address *</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder="Street address"
                           data-testid="venue-address-input"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -469,7 +460,7 @@ export default function VenueForm() {
                     <FormItem>
                       <FormLabel>Hourly Rate (EGP) *</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="number"
                           placeholder="500"
                           data-testid="venue-price-input"
@@ -490,7 +481,7 @@ export default function VenueForm() {
                       <FormItem>
                         <FormLabel>Minimum Booking (minutes)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             data-testid="venue-min-booking-input"
                             {...field}
@@ -509,7 +500,7 @@ export default function VenueForm() {
                       <FormItem>
                         <FormLabel>Maximum Booking (minutes)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             placeholder="Leave empty for no limit"
                             data-testid="venue-max-booking-input"
@@ -529,7 +520,7 @@ export default function VenueForm() {
                       <FormItem>
                         <FormLabel>Buffer Time (minutes)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             data-testid="venue-buffer-input"
                             {...field}
@@ -558,8 +549,8 @@ export default function VenueForm() {
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
                     data-testid="new-amenity-input"
                   />
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={addAmenity}
                     data-testid="add-amenity-button"
                   >
@@ -570,9 +561,9 @@ export default function VenueForm() {
                 {amenities.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {amenities.map((amenity, index) => (
-                      <Badge 
-                        key={index} 
-                        variant="secondary" 
+                      <Badge
+                        key={index}
+                        variant="secondary"
                         className="flex items-center space-x-1"
                       >
                         <span>{amenity}</span>
@@ -601,8 +592,8 @@ export default function VenueForm() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {uploadedImages.map((imagePath, index) => (
                       <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                        <img 
-                          src={imagePath} 
+                        <img
+                          src={imagePath}
                           alt={`Venue image ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -634,16 +625,16 @@ export default function VenueForm() {
 
             {/* Submit */}
             <div className="flex justify-end space-x-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setLocation('/host/dashboard')}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push('/host/dashboard')}
                 data-testid="cancel-button"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={createVenueMutation.isPending || updateVenueMutation.isPending}
                 data-testid="submit-venue-button"
               >

@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useRouter } from "next/router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useEffect } from "react";
-import { Venue, BookingWithDetails } from "@shared/schema";
+import { Venue, BookingWithDetails } from "@/types/api";
+import { getWithAuth } from "@/lib/authUtils";
 
 export default function HostDashboard() {
-  const [, setLocation] = useLocation();
+  const router = useRouter();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -23,31 +23,34 @@ export default function HostDashboard() {
         description: "You need to be a host to access this page.",
         variant: "destructive",
       });
-      setLocation('/');
+      router.push('/');
     }
-  }, [authLoading, isAuthenticated, user, toast, setLocation]);
+  }, [authLoading, isAuthenticated, user, toast, router.push]);
 
-  const { data: venues, isLoading: venuesLoading } = useQuery<Venue[]>({
+  // Fetch all venues
+  const { data: allVenues, isLoading: venuesLoading } = useQuery<Venue[]>({
     queryKey: ['/api/host/venues'],
-    queryFn: async () => {
-      const response = await fetch('/api/host/venues');
-      if (!response.ok) {
-        throw new Error('Failed to fetch venues');
-      }
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/host/venues'),
+    enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
+  });
+
+  // Fetch pending venues
+  const { data: pendingVenues } = useQuery<Venue[]>({
+    queryKey: ['/api/host/venues', 'pending_approval'],
+    queryFn: () => getWithAuth('/api/host/venues?status=pending_approval'),
+    enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
+  });
+
+  // Fetch approved venues
+  const { data: approvedVenues } = useQuery<Venue[]>({
+    queryKey: ['/api/host/venues', 'approved'],
+    queryFn: () => getWithAuth('/api/host/venues?status=approved'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ['/api/host/bookings'],
-    queryFn: async () => {
-      const response = await fetch('/api/host/bookings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch bookings');
-      }
-      return response.json();
-    },
+    queryFn: () => getWithAuth('/api/host/bookings'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
@@ -64,9 +67,9 @@ export default function HostDashboard() {
   }
 
   const stats = {
-    totalVenues: venues?.length || 0,
-    activeVenues: venues?.filter(v => v.status === 'approved').length || 0,
-    pendingVenues: venues?.filter(v => v.status === 'pending_approval').length || 0,
+    totalVenues: allVenues?.length || 0,
+    activeVenues: approvedVenues?.length || 0,
+    pendingVenues: pendingVenues?.length || 0,
     totalBookings: bookings?.length || 0,
     monthlyRevenue: bookings?.reduce((sum, booking) => sum + parseFloat(booking.totalPriceEGP), 0) || 0,
   };
@@ -93,17 +96,17 @@ export default function HostDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => setLocation('/')}
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/')}
                 data-testid="back-to-home"
               >
                 <i className="fas fa-arrow-left"></i>
               </Button>
               <h1 className="text-2xl font-semibold text-foreground">Host Dashboard</h1>
             </div>
-            <Button 
-              onClick={() => setLocation('/host/venues/new')}
+            <Button
+              onClick={() => router.push('/host/venues/new')}
               data-testid="list-new-venue-button"
             >
               <i className="fas fa-plus mr-2"></i>List New Venue
@@ -172,34 +175,28 @@ export default function HostDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="venues" className="space-y-6">
+        <Tabs defaultValue="all" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="venues">My Venues</TabsTrigger>
+            <TabsTrigger value="all">All Venues ({allVenues?.length || 0})</TabsTrigger>
+            <TabsTrigger value="pending">Pending ({pendingVenues?.length || 0})</TabsTrigger>
+            <TabsTrigger value="active">Active ({approvedVenues?.length || 0})</TabsTrigger>
             <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="venues">
+          <TabsContent value="all">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Your Venues</CardTitle>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="secondary">All</Button>
-                    <Button size="sm" variant="ghost">Active</Button>
-                    <Button size="sm" variant="ghost">Pending</Button>
-                  </div>
-                </div>
+                <CardTitle>All Your Venues</CardTitle>
               </CardHeader>
               <CardContent>
-                {venues && venues.length > 0 ? (
+                {allVenues && allVenues.length > 0 ? (
                   <div className="space-y-6">
-                    {venues.map((venue) => (
-                      <div 
-                        key={venue.id} 
+                    {allVenues.map((venue) => (
+                      <div
+                        key={venue.id}
                         className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
                       >
                         <div className="w-24 h-24 rounded-xl bg-muted flex-shrink-0 bg-cover bg-center">
-                          {/* Placeholder for venue image */}
                           <div className="w-full h-full rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                             <i className="fas fa-building text-2xl text-primary"></i>
                           </div>
@@ -220,10 +217,7 @@ export default function HostDashboard() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-6 text-sm text-muted-foreground">
                               <span>
-                                <i className="fas fa-star mr-1 text-secondary"></i>4.8 (24 reviews)
-                              </span>
-                              <span>
-                                <i className="fas fa-eye mr-1 text-accent"></i>245 views
+                                <i className="fas fa-calendar mr-1"></i>Created {new Date(venue.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                             <div className="text-right">
@@ -243,8 +237,115 @@ export default function HostDashboard() {
                     <p className="text-muted-foreground mb-4">
                       Start earning by listing your first venue.
                     </p>
-                    <Button onClick={() => setLocation('/host/venues/new')}>
+                    <Button onClick={() => router.push('/host/venues/new')}>
                       <i className="fas fa-plus mr-2"></i>List Your First Venue
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pending">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Approval</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pendingVenues && pendingVenues.length > 0 ? (
+                  <div className="space-y-6">
+                    {pendingVenues.map((venue) => (
+                      <div
+                        key={venue.id}
+                        className="flex items-center space-x-4 p-4 border border-yellow-200 rounded-lg bg-yellow-50"
+                      >
+                        <div className="w-24 h-24 rounded-xl bg-muted flex-shrink-0 bg-cover bg-center">
+                          <div className="w-full h-full rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 flex items-center justify-center">
+                            <i className="fas fa-clock text-2xl text-yellow-600"></i>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-foreground">{venue.title}</h3>
+                            <div className="flex items-center space-x-2">
+                              {getStatusBadge(venue.status)}
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground text-sm mb-3">
+                            {venue.address}, {venue.city} • Up to {venue.capacity} people
+                          </p>
+                          <p className="text-sm text-yellow-700">
+                            <i className="fas fa-info-circle mr-1"></i>
+                            Your venue is under review. You'll be notified once it's approved.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <i className="fas fa-clock text-4xl text-muted-foreground mb-4"></i>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No pending venues</h3>
+                    <p className="text-muted-foreground">All your venues are either approved or rejected.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="active">
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Venues</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {approvedVenues && approvedVenues.length > 0 ? (
+                  <div className="space-y-6">
+                    {approvedVenues.map((venue) => (
+                      <div
+                        key={venue.id}
+                        className="flex items-center space-x-4 p-4 border border-green-200 rounded-lg bg-green-50"
+                      >
+                        <div className="w-24 h-24 rounded-xl bg-muted flex-shrink-0 bg-cover bg-center">
+                          <div className="w-full h-full rounded-xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                            <i className="fas fa-check-circle text-2xl text-green-600"></i>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-foreground">{venue.title}</h3>
+                            <div className="flex items-center space-x-2">
+                              {getStatusBadge(venue.status)}
+                              <Button variant="ghost" size="sm" onClick={() => router.push(`/venues/${venue.id}`)}>
+                                <i className="fas fa-external-link-alt"></i>
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground text-sm mb-3">
+                            {venue.address}, {venue.city} • Up to {venue.capacity} people
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-green-700">
+                              <i className="fas fa-check-circle mr-1"></i>
+                              Live and accepting bookings
+                            </p>
+                            <div className="text-lg font-semibold text-foreground">
+                              ₪{venue.baseHourlyPriceEGP}/hour
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <i className="fas fa-check-circle text-4xl text-muted-foreground mb-4"></i>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No active venues</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Once your venues are approved, they'll appear here.
+                    </p>
+                    <Button onClick={() => router.push('/host/venues/new')}>
+                      <i className="fas fa-plus mr-2"></i>List a New Venue
                     </Button>
                   </div>
                 )}
@@ -258,10 +359,14 @@ export default function HostDashboard() {
                 <CardTitle>Recent Bookings</CardTitle>
               </CardHeader>
               <CardContent>
-                {bookings && bookings.length > 0 ? (
+                {bookingsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : bookings && bookings.length > 0 ? (
                   <div className="space-y-4">
                     {bookings.slice(0, 10).map((booking) => (
-                      <div 
+                      <div
                         key={booking.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg"
                       >

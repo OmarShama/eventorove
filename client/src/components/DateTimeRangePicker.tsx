@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { formatInTimeZone } from "date-fns-tz";
 import { addMinutes } from "date-fns";
 
@@ -30,15 +29,15 @@ export default function DateTimeRangePicker({
   const getDurationOptions = () => {
     const options = [];
     let current = minBookingMinutes;
-    
+
     // Add 30-minute increments up to 4 hours
     while (current <= 240) {
       const hours = Math.floor(current / 60);
       const mins = current % 60;
-      const label = hours > 0 
+      const label = hours > 0
         ? `${hours}h${mins > 0 ? ` ${mins}m` : ''}`
         : `${mins} minutes`;
-      
+
       options.push({ value: current, label });
       current += 30;
     }
@@ -92,8 +91,8 @@ export default function DateTimeRangePicker({
         <Label htmlFor="duration" className="text-sm font-medium text-foreground">
           Duration
         </Label>
-        <Select 
-          value={durationMinutes.toString()} 
+        <Select
+          value={durationMinutes.toString()}
           onValueChange={(value) => setDurationMinutes(parseInt(value))}
           disabled={disabled}
         >

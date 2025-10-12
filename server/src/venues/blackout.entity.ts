@@ -4,21 +4,21 @@ import { Venue } from './venue.entity';
 @Entity('blackouts')
 @Index(['venueId', 'startDateTime'])
 export class Blackout {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column('uuid')
-  venueId: string;
+    @Column('uuid')
+    venueId: string;
 
-  @ManyToOne(() => Venue, v => v.blackouts)
-  venue: Venue;
+    @ManyToOne(() => Venue, v => v.blackouts)
+    venue: Venue;
 
-  @Column({ type: 'timestamptz' })
-  startDateTime: Date;
+    @Column({ type: 'timestamptz' })
+    startDateTime: Date;
 
-  @Column({ type: 'timestamptz' })
-  endDateTime: Date;
+    @Column({ type: 'timestamptz' })
+    endDateTime: Date;
 
-  @Column({ length: 200 })
-  reason: string;
+    @Column({ type: 'varchar', length: 200 })
+    reason: string;
 }

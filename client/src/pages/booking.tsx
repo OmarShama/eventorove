@@ -1,17 +1,17 @@
-import { useParams, useLocation } from "wouter";
+import { useRouter } from "next/router";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookingWithDetails } from "@shared/schema";
+import { BookingWithDetails } from "@/types/api";
 import { formatInTimeZone } from "date-fns-tz";
 
 const CAIRO_TIMEZONE = "Africa/Cairo";
 
 export default function Booking() {
-  const params = useParams();
-  const [, setLocation] = useLocation();
-  const bookingId = params.bookingId!;
+  const router = useRouter();
+  const { bookingId } = router.query;
 
   const { data: booking, isLoading, error } = useQuery<BookingWithDetails>({
     queryKey: ['/api/bookings', bookingId],
@@ -22,6 +22,7 @@ export default function Booking() {
       }
       return response.json();
     },
+    enabled: !!bookingId, // Only run query when bookingId is available
   });
 
   if (isLoading) {
@@ -38,9 +39,11 @@ export default function Booking() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
           <p className="text-muted-foreground mb-4">The booking you're looking for doesn't exist.</p>
-          <Button onClick={() => setLocation('/')}>
-            Back to Home
-          </Button>
+          <Link href="/">
+            <Button>
+              Back to Home
+            </Button>
+          </Link>
         </div>
       </div>
     );
@@ -51,16 +54,18 @@ export default function Booking() {
   };
 
   const addToCalendar = () => {
-    const start = booking.startDateTime instanceof Date ? booking.startDateTime : new Date(booking.startDateTime);
-    const end = booking.endDateTime instanceof Date ? booking.endDateTime : new Date(booking.endDateTime);
-    
+    if (typeof window === 'undefined' || !booking) return; // SSR safety check
+
+    const start = new Date(booking.startDateTime);
+    const end = new Date(booking.endDateTime);
+
     const startStr = start.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endStr = end.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    
+
     const details = `Venue: ${booking.venue.title}\nLocation: ${booking.venue.address}, ${booking.venue.city}\nGuests: ${booking.guestCount}\nTotal: ₪${booking.totalPriceEGP}`;
-    
+
     const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Venue Booking - ${booking.venue.title}`)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(`${booking.venue.address}, ${booking.venue.city}`)}`;
-    
+
     window.open(calendarUrl, '_blank');
   };
 
@@ -72,12 +77,12 @@ export default function Booking() {
           <div className="w-24 h-24 bg-accent rounded-full flex items-center justify-center mx-auto mb-6">
             <i className="fas fa-check text-accent-foreground text-3xl"></i>
           </div>
-          
+
           <h1 className="text-3xl font-bold text-foreground mb-4">Booking Confirmed!</h1>
           <p className="text-xl text-muted-foreground mb-8">
             Your venue is reserved and ready for your event.
           </p>
-          
+
           {/* Booking Details */}
           <div className="bg-muted/30 rounded-2xl p-6 mb-8 text-left">
             <h3 className="text-xl font-semibold text-foreground mb-4 text-center">
@@ -159,7 +164,7 @@ export default function Booking() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
+            <Button
               onClick={addToCalendar}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
               data-testid="add-to-calendar-button"
@@ -167,21 +172,22 @@ export default function Booking() {
               <i className="fas fa-calendar-alt mr-2"></i>
               Add to Calendar
             </Button>
-            <Button 
+            <Button
               variant="outline"
               data-testid="call-venue-button"
             >
               <i className="fas fa-phone mr-2"></i>
               Call Venue
             </Button>
-            <Button 
-              variant="ghost"
-              onClick={() => setLocation('/')}
-              data-testid="back-to-home-button"
-            >
-              <i className="fas fa-home mr-2"></i>
-              Back to Home
-            </Button>
+            <Link href="/">
+              <Button
+                variant="ghost"
+                data-testid="back-to-home-button"
+              >
+                <i className="fas fa-home mr-2"></i>
+                Back to Home
+              </Button>
+            </Link>
           </div>
 
           <p className="text-xs text-muted-foreground mt-8">

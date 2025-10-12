@@ -73,12 +73,28 @@ export default function SearchBar({ onSearch, className = "" }: SearchBarProps) 
           </SelectContent>
         </Select>
 
-        <Input
-          type="datetime-local"
-          value={dateTime}
-          onChange={(e) => setDateTime(e.target.value)}
-          data-testid="datetime-select"
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="datetime-local"
+            value={dateTime}
+            onChange={(e) => setDateTime(e.target.value)}
+            data-testid="datetime-select"
+          />
+          
+          <Select value={duration.toString()} onValueChange={(value) => setDuration(parseInt(value))}>
+            <SelectTrigger data-testid="duration-select">
+              <SelectValue placeholder="Duration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">30 min</SelectItem>
+              <SelectItem value="60">1 hour</SelectItem>
+              <SelectItem value="90">1.5 hours</SelectItem>
+              <SelectItem value="120">2 hours</SelectItem>
+              <SelectItem value="180">3 hours</SelectItem>
+              <SelectItem value="240">4 hours</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <Button 
           onClick={handleSearch}

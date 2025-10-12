@@ -9,19 +9,25 @@ export class User {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ length: 120 })
-    name: string;
-
-    @Column({ length: 180, unique: true })
+    @Column({ type: 'varchar', length: 180, unique: true })
     email: string;
 
-    @Column({ select: false })
-    passwordHash: string;
+    @Column({ type: 'varchar', length: 100 })
+    firstName: string;
+
+    @Column({ type: 'varchar', length: 100 })
+    lastName: string;
+
+    @Column({ type: 'varchar', nullable: true })
+    profileImageUrl: string;
+
+    @Column({ type: 'varchar', select: false })
+    password: string;
 
     @Column({ type: 'timestamptz', nullable: true })
     emailVerifiedAt: Date | null;
 
-    @Column({ length: 10, default: 'guest' })
+    @Column({ type: 'varchar', length: 10, default: 'guest' })
     role: UserRole;
 
     @OneToMany(() => Venue, v => v.host)
