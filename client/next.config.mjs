@@ -6,7 +6,7 @@ const nextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: 'http://mononestnext_server:3001/api/:path*',
+                destination: 'http://mononestnext_server:3000/api/:path*',
             },
         ];
     },

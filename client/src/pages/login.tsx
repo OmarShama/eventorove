@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,6 @@ import Link from "next/link";
 export default function Login() {
     const router = useRouter();
     const { toast } = useToast();
-    const queryClient = useQueryClient();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -49,16 +48,6 @@ export default function Login() {
         },
     });
 
-    const logoutMutation = useMutation({
-        mutationFn: authApi.logout,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["auth"] });
-            toast({
-                title: "Success",
-                description: "Logged out successfully",
-            });
-        },
-    });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,9 +62,6 @@ export default function Login() {
         loginMutation.mutate();
     };
 
-    const handleLogout = () => {
-        logoutMutation.mutate();
-    };
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -148,14 +134,11 @@ export default function Login() {
                             </div>
 
                             <div className="mt-6 space-y-3">
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={handleLogout}
-                                    disabled={logoutMutation.isPending}
-                                >
-                                    {logoutMutation.isPending ? "Logging out..." : "Logout (if logged in)"}
-                                </Button>
+                                <Link href="/register?role=host" className="block">
+                                    <Button variant="outline" className="w-full">
+                                        Register as Host
+                                    </Button>
+                                </Link>
 
                                 <Link href="/" className="block">
                                     <Button variant="ghost" className="w-full">

@@ -9,10 +9,17 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
     imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        ConfigModule.forRoot({
+            isGlobal: true,
+            envFilePath: [
+                `.env.${process.env.NODE_ENV || 'development'}`,
+                '.env'
+            ]
+        }),
         TypeOrmModule.forRootAsync({
             inject: [ConfigService],
             useFactory: (config: ConfigService): TypeOrmModuleOptions => {
+                const environment = config.get<string>('NODE_ENV') || 'development';
                 const schema = config.get<string>('DB_SCHEMA') ?? 'public';
                 const synchronize = (config.get<string>('DB_SYNC') ?? 'false') === 'true';
                 const url = config.get<string>('DATABASE_URL');
@@ -25,6 +32,7 @@ import { AuthModule } from './auth/auth.module';
                     namingStrategy: new SnakeNamingStrategy(),
                 };
 
+                // For dev environment (Supabase), use DATABASE_URL
                 if (url) {
                     const withSSL = url.includes('sslmode=')
                         ? url
@@ -37,7 +45,7 @@ import { AuthModule } from './auth/auth.module';
                     } as TypeOrmModuleOptions;
                 }
 
-                // Fallback to discrete host/port envs for local/dev DB
+                // For local and docker environments, use discrete connection parameters
                 return {
                     ...common,
                     host: config.get<string>('DB_HOST') ?? '127.0.0.1',

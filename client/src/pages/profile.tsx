@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 // Layout is now handled globally in _app.tsx
 import ProfileCard from '@/components/ProfileCard';
 import ProfileForm from '@/components/ProfileForm';
+import UpgradeToHost from '@/components/UpgradeToHost';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, User } from 'lucide-react';
@@ -86,7 +87,9 @@ export default function Profile() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-6">
+                                    <div className="mt-6 space-y-4">
+                                        <UpgradeToHost />
+
                                         <Button
                                             onClick={() => setActiveTab('edit')}
                                             className="w-full md:w-auto"

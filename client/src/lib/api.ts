@@ -1,11 +1,12 @@
 import { apiRequest } from "./queryClient";
 import { User, ApiResponse, LoginResponse } from "@/types/api";
+import { config } from "./config";
 
 export class ApiClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = '/api') {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl || `${config.apiUrl}/api`;
   }
 
   async get<T>(endpoint: string): Promise<T> {
@@ -313,6 +314,7 @@ export const authApi = {
     password: string;
     firstName: string;
     lastName: string;
+    role?: 'guest' | 'host';
   }) => apiClient.post<ApiResponse<User>>('/auth/register', userData),
 
   updateProfile: (userData: Partial<{
@@ -327,4 +329,6 @@ export const authApi = {
   }) => apiClient.patch<ApiResponse<null>>('/auth/password', passwordData),
 
   logout: () => apiClient.post('/auth/logout'),
+
+  upgradeToHost: () => apiClient.patch<ApiResponse<User>>('/auth/upgrade-to-host'),
 };

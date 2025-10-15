@@ -17,7 +17,7 @@ export default function VenueDetail() {
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const venueId = params.id!;
+  const venueId = params.id as string;
 
   const [startDateTime, setStartDateTime] = useState<Date | null>(null);
   const [endDateTime, setEndDateTime] = useState<Date | null>(null);
@@ -33,6 +33,7 @@ export default function VenueDetail() {
       }
       return response.json();
     },
+    enabled: !!venueId,
   });
 
   const { data: availability, isLoading: checkingAvailability } = useQuery({
@@ -51,7 +52,7 @@ export default function VenueDetail() {
       }
       return response.json();
     },
-    enabled: !!startDateTime,
+    enabled: !!startDateTime && !!venueId,
   });
 
   const bookingMutation = useMutation({
@@ -151,6 +152,14 @@ export default function VenueDetail() {
 
     bookingMutation.mutate();
   };
+
+  if (!venueId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

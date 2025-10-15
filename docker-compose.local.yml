@@ -1,0 +1,60 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: mononestnext_db_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eventorove
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - mononestnext_network
+
+  # NestJS Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: mononestnext_server_local
+    restart: unless-stopped
+    env_file:
+      - ./server/env.local
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - mononestnext_network
+    volumes:
+      - ./server/uploads:/app/uploads
+
+  # Next.js Client
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: mononestnext_client_local
+    restart: unless-stopped
+    env_file:
+      - ./client/env.local
+    ports:
+      - "5001:5001"
+    depends_on:
+      - server
+    networks:
+      - mononestnext_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres_data_local:
+
+networks:
+  mononestnext_network:
+    driver: bridge

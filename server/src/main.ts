@@ -8,10 +8,23 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     // Configure CORS
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+        ? ['https://your-frontend-domain.com']
+        : [
+            'http://localhost:3000',  // Docker client
+            'http://localhost:3001',  // Docker client
+            'http://localhost:5000',  // Local server
+            'http://localhost:5001',  // Local client
+            'http://localhost:5173'   // Vite dev server
+        ];
+
+    // Add environment-specific origins if defined
+    if (process.env.CORS_ORIGINS) {
+        allowedOrigins.push(...process.env.CORS_ORIGINS.split(','));
+    }
+
     app.enableCors({
-        origin: process.env.NODE_ENV === 'production'
-            ? ['https://your-frontend-domain.com']
-            : ['http://localhost:3000', 'http://localhost:5173'],
+        origin: allowedOrigins,
         credentials: true,
     });
 

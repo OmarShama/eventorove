@@ -61,7 +61,7 @@ const cities = [
 export default function VenueForm() {
   const router = useRouter();
   const params = router.query;
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isEdit = !!params.id;
@@ -82,6 +82,9 @@ export default function VenueForm() {
 
   // Check authentication
   useEffect(() => {
+    // Don't check until loading is complete
+    if (isLoading) return;
+
     if (!isAuthenticated || (user?.role !== 'host' && user?.role !== 'admin')) {
       toast({
         title: "Access Denied",
@@ -90,7 +93,7 @@ export default function VenueForm() {
       });
       router.push('/');
     }
-  }, [isAuthenticated, user, toast, router.push]);
+  }, [isAuthenticated, user, isLoading, toast, router.push]);
 
   const form = useForm<VenueFormData>({
     resolver: zodResolver(venueFormSchema),
@@ -111,7 +114,7 @@ export default function VenueForm() {
   const { data: venueResponse, isLoading: venueLoading } = useQuery({
     queryKey: ['venues', params.id],
     queryFn: () => venueApi.getById(params.id as string),
-    enabled: isEdit && !!params.id,
+    enabled: isEdit && !!params.id && typeof params.id === 'string',
   });
 
   const venue = (venueResponse as any)?.data;
@@ -234,13 +237,15 @@ export default function VenueForm() {
     onSuccess: async () => {
       try {
         // Update availability rules
-        for (const rule of availabilityRules) {
-          await postWithAuth(`/api/venues/${params.id}/availability-rules`, rule);
-        }
+        if (params.id) {
+          for (const rule of availabilityRules) {
+            await postWithAuth(`/api/venues/${params.id}/availability-rules`, rule);
+          }
 
-        // Update blackouts
-        for (const blackout of blackouts) {
-          await postWithAuth(`/api/venues/${params.id}/blackouts`, blackout);
+          // Update blackouts
+          for (const blackout of blackouts) {
+            await postWithAuth(`/api/venues/${params.id}/blackouts`, blackout);
+          }
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
@@ -269,7 +274,10 @@ export default function VenueForm() {
   });
 
   const handleGetUploadParameters = async () => {
-    const response = await fetch(`/api/venues/${params.id || 'temp'}/images/upload`, {
+    if (!params.id) {
+      throw new Error('Venue ID is required for upload');
+    }
+    const response = await fetch(`/api/venues/${params.id}/images/upload`, {
       method: 'POST',
     });
 
@@ -289,6 +297,7 @@ export default function VenueForm() {
       const imageURL = result.successful[0].uploadURL;
 
       try {
+        if (!params.id) return;
         const response = await fetch(`/api/venues/${params.id}/images`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

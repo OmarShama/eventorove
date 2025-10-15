@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: eventorove
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_SCHEMA: eventorove_dev
     ports:
       - "55432:5432"
     volumes:
@@ -25,19 +24,10 @@ services:
       dockerfile: Dockerfile
     container_name: mononestnext_server
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: eventorove
-      DB_SCHEMA: eventorove_dev
-      DB_SYNC: false
-      JWT_SECRET: your-jwt-secret-key-change-this-in-production
-      PORT: 3001
+    env_file:
+      - ./server/env.docker
     ports:
-      - "3001:3001"
+      - "3000:3000"
     depends_on:
       - db
     networks:
@@ -52,11 +42,10 @@ services:
       dockerfile: Dockerfile
     container_name: mononestnext_client
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+    env_file:
+      - ./client/env.docker
     ports:
-      - "3000:3000"
+      - "3001:3001"
     depends_on:
       - server
     networks:

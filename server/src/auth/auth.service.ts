@@ -11,6 +11,7 @@ interface CreateUserRequest {
     password: string;
     firstName: string;
     lastName: string;
+    role?: 'guest' | 'host' | 'admin';
 }
 
 @Injectable()
@@ -70,7 +71,7 @@ export class AuthService {
             password: hashedPassword,
             firstName: userData.firstName,
             lastName: userData.lastName,
-            role: 'guest', // Default role
+            role: userData.role || 'guest', // Use provided role or default to guest
             emailVerifiedAt: new Date(), // Auto-verify for development
         });
 
@@ -140,6 +141,17 @@ export class AuthService {
         // Hash and save new password
         const hashedNewPassword = await this.hashPassword(newPassword);
         await this.userRepository.update(id, { password: hashedNewPassword });
+    }
+
+    async updateUserRole(id: string, role: 'guest' | 'host' | 'admin'): Promise<UserDto> {
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        user.role = role;
+        const updatedUser = await this.userRepository.save(user);
+        return this.mapUserToDto(updatedUser);
     }
 
     private mapUserToDto(user: User): UserDto {
