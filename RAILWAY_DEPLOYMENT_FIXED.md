@@ -20,11 +20,14 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 5. **IMPORTANT**: In the deployment settings, set:
    - **Root Directory**: `server`
    - **Build Command**: (Leave empty - uses Dockerfile)
-   - **Start Command**: (Railway will auto-detect from railway.json)
+   - **Start Command**: (Leave empty - uses railway.json)
+   - **Dockerfile Path**: `Dockerfile` (should auto-detect)
 6. **Add Environment Variables**:
    ```
    NODE_ENV=production
    DATABASE_URL=your-supabase-url-here
+   DB_SCHEMA=eventorove_dev
+   DB_SYNC=false
    JWT_SECRET=your-super-secret-jwt-key-here
    PORT=3001
    HOST=0.0.0.0
@@ -42,7 +45,8 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 3. **IMPORTANT**: In the deployment settings, set:
    - **Root Directory**: `client`
    - **Build Command**: (Leave empty - uses Dockerfile)
-   - **Start Command**: (Railway will auto-detect from railway.json)
+   - **Start Command**: (Leave empty - uses railway.json)
+   - **Dockerfile Path**: `Dockerfile` (should auto-detect)
 4. **Add Environment Variables**:
    ```
    NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api
