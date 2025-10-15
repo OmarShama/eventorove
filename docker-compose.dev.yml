@@ -1,78 +1,37 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:16-alpine
-    container_name: mononestnext_db_dev
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: stagea
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_SCHEMA: stagea_local
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    networks:
-      - mononestnext_network
-
-  # NestJS Server (Development)
+  # NestJS Server (for dev environment, no local DB needed - uses Supabase)
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
     container_name: mononestnext_server_dev
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: stagea
-      DB_SCHEMA: stagea_local
-      DB_SYNC: true
-      JWT_SECRET: dev-jwt-secret-key
-      PORT: 3001
+    env_file:
+      - ./server/env.dev
     ports:
       - "3001:3001"
-    depends_on:
-      - db
     networks:
       - mononestnext_network
     volumes:
-      - ./server:/app
-      - /app/node_modules
       - ./server/uploads:/app/uploads
-    command: npm run start:dev
 
-  # Next.js Client (Development)
+  # Next.js Client
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
     container_name: mononestnext_client_dev
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+    env_file:
+      - ./client/env.dev
     ports:
       - "3000:3000"
     depends_on:
       - server
     networks:
       - mononestnext_network
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-      - /app/.next
-    command: npm run dev
-
-volumes:
-  postgres_data_dev:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   mononestnext_network:

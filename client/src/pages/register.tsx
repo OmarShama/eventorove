@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { authApi } from "@/lib/api";
 import { ApiResponse, User } from "@/types/api";
@@ -20,7 +21,16 @@ export default function Register() {
         confirmPassword: "",
         firstName: "",
         lastName: "",
+        role: "guest" as "guest" | "host",
     });
+
+    // Check for role parameter in URL
+    useEffect(() => {
+        const { role } = router.query;
+        if (role === "host") {
+            setFormData(prev => ({ ...prev, role: "host" }));
+        }
+    }, [router.query]);
 
     const registerMutation = useMutation<ApiResponse<User>>({
         mutationFn: () => authApi.register({
@@ -28,6 +38,7 @@ export default function Register() {
             password: formData.password,
             firstName: formData.firstName,
             lastName: formData.lastName,
+            role: formData.role,
         }),
         onSuccess: (response) => {
             if (response.success) {
@@ -178,6 +189,28 @@ export default function Register() {
                                     className="mt-1"
                                     placeholder="Confirm your password"
                                 />
+                            </div>
+
+                            <div>
+                                <Label>Account Type</Label>
+                                <RadioGroup
+                                    value={formData.role}
+                                    onValueChange={(value) => handleInputChange("role", value)}
+                                    className="mt-2"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="guest" id="guest" />
+                                        <Label htmlFor="guest" className="cursor-pointer">
+                                            Guest - Browse and book venues
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="host" id="host" />
+                                        <Label htmlFor="host" className="cursor-pointer">
+                                            Host - List and manage venues
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
 
                             <Button

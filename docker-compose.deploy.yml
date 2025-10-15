@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # NestJS Server (Production deployment using dev environment config)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: mononestnext_server_deploy
+    restart: unless-stopped
+    env_file:
+      - ./server/env.dev
+    ports:
+      - "3001:3001"
+    networks:
+      - mononestnext_network
+    volumes:
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Next.js Client (Production deployment using dev environment config)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: mononestnext_client_deploy
+    restart: unless-stopped
+    env_file:
+      - ./client/env.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - mononestnext_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mononestnext_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - client
+      - server
+    networks:
+      - mononestnext_network
+
+networks:
+  mononestnext_network:
+    driver: bridge

@@ -8,9 +8,12 @@ import {
     HttpStatus,
     Session,
     Req,
+    UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser, CurrentUserData } from './current-user.decorator';
 import {
     ApiResponse,
     UserDto,
@@ -26,6 +29,7 @@ interface RegisterRequest {
     password: string;
     firstName: string;
     lastName: string;
+    role?: 'guest' | 'host' | 'admin';
 }
 
 @Controller('api/auth')
@@ -33,30 +37,11 @@ export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
     @Get('user')
-    async getCurrentUser(@Session() session: any, @Req() req: Request): Promise<ApiResponse<UserDto>> {
+    @UseGuards(JwtAuthGuard)
+    async getCurrentUser(@CurrentUser() user: CurrentUserData): Promise<ApiResponse<UserDto>> {
         try {
-            // For development, return a mock user if no session exists
-            if (!session.userId) {
-                // Mock admin user for development
-                const mockUser: UserDto = {
-                    id: 'mock-admin-id',
-                    email: 'admin@Eventorove.com',
-                    firstName: 'Admin',
-                    lastName: 'User',
-                    role: 'admin',
-                    emailVerifiedAt: new Date().toISOString(),
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                };
-
-                return {
-                    success: true,
-                    data: mockUser,
-                };
-            }
-
-            const user = await this.authService.getUserById(session.userId);
-            if (!user) {
+            const fullUser = await this.authService.getUserById(user.id);
+            if (!fullUser) {
                 throw new HttpException(
                     {
                         success: false,
@@ -68,7 +53,7 @@ export class AuthController {
 
             return {
                 success: true,
-                data: user,
+                data: fullUser,
             };
         } catch (error) {
             throw new HttpException(
@@ -127,6 +112,17 @@ export class AuthController {
     @Post('register')
     async register(@Body() registerDto: RegisterRequest): Promise<ApiResponse<UserDto>> {
         try {
+            // Only allow guest, host, and admin roles for self-registration (admin for testing)
+            if (registerDto.role && !['guest', 'host', 'admin'].includes(registerDto.role)) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        error: 'Invalid role for self-registration',
+                    },
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+
             const user = await this.authService.createUser(registerDto);
 
             return {
@@ -226,6 +222,39 @@ export class AuthController {
                 success: true,
                 data: null,
                 message: 'Password changed successfully',
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    success: false,
+                    error: error.message,
+                },
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+    }
+
+    @Patch('upgrade-to-host')
+    @UseGuards(JwtAuthGuard)
+    async upgradeToHost(@CurrentUser() user: CurrentUserData): Promise<ApiResponse<UserDto>> {
+        try {
+            // Only allow guests to upgrade to host
+            if (user.role !== 'guest') {
+                throw new HttpException(
+                    {
+                        success: false,
+                        error: 'Only guests can upgrade to host role',
+                    },
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+
+            const updatedUser = await this.authService.updateUserRole(user.id, 'host');
+
+            return {
+                success: true,
+                data: updatedUser,
+                message: 'Successfully upgraded to host role',
             };
         } catch (error) {
             throw new HttpException(

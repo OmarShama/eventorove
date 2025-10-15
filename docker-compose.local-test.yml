@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # NestJS Server (Local testing with dev environment)
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: mononestnext_server_test
+    restart: unless-stopped
+    env_file:
+      - ./server/env.dev
+    ports:
+      - "3001:3001"
+    networks:
+      - mononestnext_network
+    volumes:
+      - ./server/uploads:/app/uploads
+
+  # Next.js Client (Local testing with dev environment)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: mononestnext_client_test
+    restart: unless-stopped
+    env_file:
+      - ./client/env.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    networks:
+      - mononestnext_network
+
+networks:
+  mononestnext_network:
+    driver: bridge
