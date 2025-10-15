@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } f
 import { Venue } from '../venues/venue.entity';
 import { User } from '../users/user.entity';
 
-export type BookingStatus = 'confirmed' | 'cancelled';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
 @Entity('bookings')
 export class Booking {

@@ -93,7 +93,7 @@ export default function Register() {
                 <div className="text-center">
                     <Link href="/" className="inline-flex items-center">
                         <i className="fas fa-map-marker-alt text-primary text-3xl mr-2"></i>
-                        <span className="text-3xl font-bold text-primary">Stagea</span>
+                        <span className="text-3xl font-bold text-primary">Eventorove</span>
                     </Link>
                     <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
                         Create your account

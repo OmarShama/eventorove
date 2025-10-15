@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -203,7 +204,9 @@ export default function HostDashboard() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-lg font-semibold text-foreground">{venue.title}</h3>
+                            <Link href={`/venue-manage/${venue.id}`}>
+                              <h3 className="text-lg font-semibold text-foreground hover:text-blue-600 cursor-pointer">{venue.title}</h3>
+                            </Link>
                             <div className="flex items-center space-x-2">
                               {getStatusBadge(venue.status)}
                               <Button variant="ghost" size="sm">
@@ -266,7 +269,9 @@ export default function HostDashboard() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-lg font-semibold text-foreground">{venue.title}</h3>
+                            <Link href={`/venue-manage/${venue.id}`}>
+                              <h3 className="text-lg font-semibold text-foreground hover:text-blue-600 cursor-pointer">{venue.title}</h3>
+                            </Link>
                             <div className="flex items-center space-x-2">
                               {getStatusBadge(venue.status)}
                             </div>
@@ -276,7 +281,7 @@ export default function HostDashboard() {
                           </p>
                           <p className="text-sm text-yellow-700">
                             <i className="fas fa-info-circle mr-1"></i>
-                            Your venue is under review. You'll be notified once it's approved.
+                            Your venue is under review. You&apos;ll be notified once it&apos;s approved.
                           </p>
                         </div>
                       </div>
@@ -313,7 +318,9 @@ export default function HostDashboard() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-lg font-semibold text-foreground">{venue.title}</h3>
+                            <Link href={`/venue-manage/${venue.id}`}>
+                              <h3 className="text-lg font-semibold text-foreground hover:text-blue-600 cursor-pointer">{venue.title}</h3>
+                            </Link>
                             <div className="flex items-center space-x-2">
                               {getStatusBadge(venue.status)}
                               <Button variant="ghost" size="sm" onClick={() => router.push(`/venues/${venue.id}`)}>
@@ -342,7 +349,7 @@ export default function HostDashboard() {
                     <i className="fas fa-check-circle text-4xl text-muted-foreground mb-4"></i>
                     <h3 className="text-xl font-semibold text-foreground mb-2">No active venues</h3>
                     <p className="text-muted-foreground mb-4">
-                      Once your venues are approved, they'll appear here.
+                      Once your venues are approved, they&apos;ll appear here.
                     </p>
                     <Button onClick={() => router.push('/host/venues/new')}>
                       <i className="fas fa-plus mr-2"></i>List a New Venue

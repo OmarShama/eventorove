@@ -98,7 +98,7 @@ export interface VenueWithDetails extends Venue {
 }
 
 // Booking Types
-export type BookingStatus = 'confirmed' | 'cancelled';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
 export interface Booking {
   id: string;
@@ -110,6 +110,8 @@ export interface Booking {
   totalPriceEGP: string;
   guestCount: number;
   specialRequests?: string;
+  cancellationReason?: string;
+  refundAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -117,6 +119,101 @@ export interface Booking {
 export interface BookingWithDetails extends Booking {
   venue: Venue;
   guest: User;
+}
+
+// Calendar and Analytics Types
+export interface CalendarBooking {
+  id: string;
+  guestName: string;
+  guestEmail: string;
+  guestCount: number;
+  startDateTime: string;
+  endDateTime: string;
+  status: BookingStatus;
+  totalPriceEGP: number;
+  venueName: string;
+  packageName?: string;
+  notes?: string;
+}
+
+export interface RevenueData {
+  period: string;
+  revenue: number;
+  bookings: number;
+  averageBookingValue: number;
+  cancellationRate: number;
+  growth: number;
+}
+
+export interface VenueRevenueData {
+  venueId: string;
+  venueName: string;
+  revenue: number;
+  bookings: number;
+  averageBookingValue: number;
+  utilizationRate: number;
+}
+
+export interface AnalyticsData {
+  totalRevenue: number;
+  totalBookings: number;
+  averageBookingValue: number;
+  cancellationRate: number;
+  topVenues: VenueRevenueData[];
+  revenueByPeriod: RevenueData[];
+  bookingsByStatus: Record<BookingStatus, number>;
+}
+
+// Package Management Types
+export interface PackageFormData {
+  name: string;
+  description: string;
+  priceEGP: number;
+  durationMinutes: number;
+  maxGuests?: number;
+  isPopular: boolean;
+  isActive: boolean;
+  features: string[];
+}
+
+// Availability Management Types
+export interface TimeSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  isBlocked: boolean;
+  reason?: string;
+}
+
+export interface DayAvailability {
+  date: string;
+  timeSlots: TimeSlot[];
+  isBlackout: boolean;
+  blackoutReason?: string;
+}
+
+export interface RecurringRule {
+  id: string;
+  name: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  breakStartTime?: string;
+  breakEndTime?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// Image Management Types
+export interface VenueImageDetails extends VenueImage {
+  alt?: string;
+  caption?: string;
+  isMain: boolean;
+  order: number;
+  size?: number;
+  width?: number;
+  height?: number;
+  uploadedAt: string;
 }
 
 // Request Types
@@ -185,6 +282,66 @@ export interface LoginResponse extends User {
   accessToken: string;
 }
 
+// Filter Types
+export interface CalendarFilters {
+  search?: string;
+  status?: 'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  venueId?: string;
+  dateRange?: {
+    start?: string;
+    end?: string;
+  };
+  guestCountRange?: {
+    min?: number;
+    max?: number;
+  };
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
+}
+
+export interface ReportFilters {
+  dateRange: {
+    start: string;
+    end: string;
+    preset?: string;
+  };
+  venues?: string[];
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
+  guestRange?: {
+    min?: number;
+    max?: number;
+  };
+  bookingStatus?: string[];
+  groupBy?: 'day' | 'week' | 'month' | 'quarter';
+}
+
+// Export Configuration Types
+export interface ExportConfig {
+  format: 'pdf' | 'csv' | 'excel' | 'png';
+  sections: {
+    summary: boolean;
+    revenueChart: boolean;
+    venuePerformance: boolean;
+    detailedBreakdown: boolean;
+    bookingsList: boolean;
+  };
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  customizations: {
+    includeCharts: boolean;
+    includeLogos: boolean;
+    includeSummary: boolean;
+    pageOrientation: 'portrait' | 'landscape';
+  };
+}
+
 // Admin Types
 export interface AdminStats {
   totalVenues: number;
@@ -193,4 +350,25 @@ export interface AdminStats {
   pendingVenues: number;
   revenueThisMonth: string;
   bookingsThisMonth: number;
+}
+
+// User Management Types
+export interface UserDto extends User {
+  status?: 'active' | 'suspended' | 'banned';
+}
+
+// Settings Types
+export interface PlatformSettings {
+  siteName: string;
+  siteDescription: string;
+  contactEmail: string;
+  supportEmail: string;
+  maintenanceMode: boolean;
+  allowRegistrations: boolean;
+  requireEmailVerification: boolean;
+  defaultBookingDuration: number;
+  maxBookingDuration: number;
+  bookingAdvanceNotice: number;
+  cancellationPolicy: string;
+  refundPolicy: string;
 }

@@ -165,7 +165,7 @@ export default function VenueDetail() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-2">Venue Not Found</h1>
-          <p className="text-muted-foreground mb-4">The venue you're looking for doesn't exist.</p>
+          <p className="text-muted-foreground mb-4">The venue you&apos;re looking for doesn&apos;t exist.</p>
           <Button onClick={() => router.push('/search')}>
             Back to Search
           </Button>
@@ -273,6 +273,105 @@ export default function VenueDetail() {
               </p>
             </div>
 
+            {/* Venue Details */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-foreground mb-4">Venue Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <i className="fas fa-users text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">Capacity</span>
+                      <p className="text-muted-foreground">{venue.capacity} people</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <i className="fas fa-tag text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">Category</span>
+                      <p className="text-muted-foreground">{venue.category}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <i className="fas fa-clock text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">Minimum Booking</span>
+                      <p className="text-muted-foreground">{venue.minBookingMinutes || 30} minutes</p>
+                    </div>
+                  </div>
+                  {venue.maxBookingMinutes && (
+                    <div className="flex items-center">
+                      <i className="fas fa-clock text-primary text-xl mr-3"></i>
+                      <div>
+                        <span className="font-medium text-foreground">Maximum Booking</span>
+                        <p className="text-muted-foreground">{venue.maxBookingMinutes} minutes</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <i className="fas fa-map-marker-alt text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">Address</span>
+                      <p className="text-muted-foreground">{venue.address}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <i className="fas fa-city text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">City</span>
+                      <p className="text-muted-foreground">{venue.city}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <i className="fas fa-hourglass-half text-primary text-xl mr-3"></i>
+                    <div>
+                      <span className="font-medium text-foreground">Buffer Time</span>
+                      <p className="text-muted-foreground">{venue.bufferMinutes || 30} minutes between bookings</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Host Information */}
+            {venue.host && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Host Information</h2>
+                <div className="flex items-center space-x-4 p-4 bg-muted/30 rounded-2xl">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                    <i className="fas fa-user text-primary text-xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      {venue.host.firstName} {venue.host.lastName}
+                    </h3>
+                    <p className="text-muted-foreground">Host</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Availability Rules */}
+            {venue.availabilityRules && venue.availabilityRules.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Availability Schedule</h2>
+                <div className="space-y-2">
+                  {venue.availabilityRules.map((rule, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="font-medium text-foreground">
+                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][rule.dayOfWeek]}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {rule.openTime} - {rule.closeTime}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Amenities */}
             {venue.amenities && venue.amenities.length > 0 && (
               <div className="mb-8">
@@ -361,9 +460,35 @@ export default function VenueDetail() {
                       className="w-full p-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                       data-testid="guest-count-select"
                     >
-                      {Array.from({ length: venue.capacity }, (_, i) => i + 1).map(num => (
-                        <option key={num} value={num}>{num} {num === 1 ? 'guest' : 'guests'}</option>
-                      ))}
+                      {(() => {
+                        const options = [];
+                        const maxCapacity = venue.capacity;
+
+                        // Generate ranges in 100 intervals
+                        for (let i = 1; i <= maxCapacity; i += 100) {
+                          const end = Math.min(i + 99, maxCapacity);
+                          const range = i === end ? `${i}` : `${i}-${end}`;
+                          options.push(
+                            <option key={i} value={i}>
+                              {range} {i === end ? 'guest' : 'guests'}
+                            </option>
+                          );
+                        }
+
+                        // If capacity is not a multiple of 100, add the remaining range
+                        if (maxCapacity % 100 !== 0) {
+                          const lastRangeStart = Math.floor(maxCapacity / 100) * 100 + 1;
+                          if (lastRangeStart <= maxCapacity) {
+                            options.push(
+                              <option key={lastRangeStart} value={lastRangeStart}>
+                                {lastRangeStart}-{maxCapacity} guests
+                              </option>
+                            );
+                          }
+                        }
+
+                        return options;
+                      })()}
                     </select>
                   </div>
 

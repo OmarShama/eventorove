@@ -27,7 +27,7 @@ import { CurrentUser, CurrentUserData } from '../auth/current-user.decorator';
 
 @Controller('api/venues')
 export class VenuesController {
-  constructor(private readonly venuesService: VenuesService) {}
+  constructor(private readonly venuesService: VenuesService) { }
 
   @Get('search')
   async searchVenues(@Query() query: VenueSearchRequest): Promise<ApiResponse<VenueSearchResponse>> {
@@ -226,6 +226,56 @@ export class VenuesController {
       return {
         success: true,
         data: uploadUrl,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post(':id/availability-rules')
+  @UseGuards(JwtAuthGuard)
+  async addAvailabilityRule(
+    @Param('id') id: string,
+    @Body() ruleData: { dayOfWeek: number; openTime: string; closeTime: string },
+    @CurrentUser() currentUser: CurrentUserData,
+  ): Promise<ApiResponse<any>> {
+    try {
+      const rule = await this.venuesService.addAvailabilityRule(id, ruleData);
+      return {
+        success: true,
+        data: rule,
+        message: 'Availability rule added successfully',
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post(':id/blackouts')
+  @UseGuards(JwtAuthGuard)
+  async addBlackout(
+    @Param('id') id: string,
+    @Body() blackoutData: { startDateTime: string; endDateTime: string; reason: string },
+    @CurrentUser() currentUser: CurrentUserData,
+  ): Promise<ApiResponse<any>> {
+    try {
+      const blackout = await this.venuesService.addBlackout(id, blackoutData);
+      return {
+        success: true,
+        data: blackout,
+        message: 'Blackout period added successfully',
       };
     } catch (error) {
       throw new HttpException(

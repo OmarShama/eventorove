@@ -102,7 +102,7 @@ export default function VenueApprovalPage() {
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
                     <h1 className="text-2xl font-bold text-gray-900 mb-4">Venue Not Found</h1>
-                    <p className="text-gray-600 mb-4">The venue you're looking for doesn't exist or you don't have permission to view it.</p>
+                    <p className="text-gray-600 mb-4">The venue you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.</p>
                     <Button onClick={() => router.push('/admin/dashboard')}>
                         Back to Dashboard
                     </Button>

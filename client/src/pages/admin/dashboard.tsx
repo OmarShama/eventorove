@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -355,7 +356,9 @@ export default function AdminDashboard() {
                             )}
                           </div>
                           <div>
-                            <h4 className="font-medium text-foreground">{venue.title}</h4>
+                            <Link href={`/venue-manage/${venue.id}`}>
+                              <h4 className="font-medium text-foreground hover:text-blue-600 cursor-pointer">{venue.title}</h4>
+                            </Link>
                             <p className="text-sm text-muted-foreground">
                               {venue.host.firstName} {venue.host.lastName} • {venue.city}
                             </p>

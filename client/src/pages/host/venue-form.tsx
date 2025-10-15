@@ -15,7 +15,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { postWithAuth, patchWithAuth, isUnauthorizedError } from "@/lib/authUtils";
+import { postWithAuth, isUnauthorizedError } from "@/lib/authUtils";
+import { venueApi } from "@/lib/api";
 import type { UploadResult } from "@uppy/core";
 
 const venueFormSchema = z.object({
@@ -68,6 +69,16 @@ export default function VenueForm() {
   const [amenities, setAmenities] = useState<string[]>([]);
   const [newAmenity, setNewAmenity] = useState("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [availabilityRules, setAvailabilityRules] = useState<Array<{
+    dayOfWeek: number;
+    openTime: string;
+    closeTime: string;
+  }>>([]);
+  const [blackouts, setBlackouts] = useState<Array<{
+    startDateTime: string;
+    endDateTime: string;
+    reason: string;
+  }>>([]);
 
   // Check authentication
   useEffect(() => {
@@ -97,43 +108,66 @@ export default function VenueForm() {
   });
 
   // Fetch venue data for editing
-  const { data: venue } = useQuery({
-    queryKey: ['/api/venues', params.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/venues/${params.id}`);
-      if (!response.ok) throw new Error('Failed to fetch venue');
-      return response.json();
-    },
-    enabled: isEdit,
+  const { data: venueResponse, isLoading: venueLoading } = useQuery({
+    queryKey: ['venues', params.id],
+    queryFn: () => venueApi.getById(params.id as string),
+    enabled: isEdit && !!params.id,
   });
+
+  const venue = (venueResponse as any)?.data;
 
   // Populate form when editing
   useEffect(() => {
-    if (venue && isEdit) {
+    if (venue && isEdit && !venueLoading) {
+      console.log('Populating form with venue data:', venue);
+
+      // Parse numeric values safely
+      const parseNumber = (value: any, defaultValue: number) => {
+        if (value === null || value === undefined) return defaultValue;
+        const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+        return isNaN(parsed) ? defaultValue : parsed;
+      };
+
       form.reset({
-        title: venue.title,
+        title: venue.title || "",
         description: venue.description || "",
-        category: venue.category,
-        address: venue.address,
-        city: venue.city,
-        capacity: venue.capacity,
-        baseHourlyPriceEGP: parseFloat(venue.baseHourlyPriceEGP),
-        minBookingMinutes: venue.minBookingMinutes || 30,
-        maxBookingMinutes: venue.maxBookingMinutes || undefined,
-        bufferMinutes: venue.bufferMinutes || 30,
-        lat: venue.lat ? parseFloat(venue.lat) : undefined,
-        lng: venue.lng ? parseFloat(venue.lng) : undefined,
+        category: venue.category || "",
+        address: venue.address || "",
+        city: venue.city || "",
+        capacity: parseNumber(venue.capacity, 10),
+        baseHourlyPriceEGP: parseNumber(venue.baseHourlyPriceEGP, 500),
+        minBookingMinutes: parseNumber(venue.minBookingMinutes, 30),
+        maxBookingMinutes: venue.maxBookingMinutes ? parseNumber(venue.maxBookingMinutes, 60) : undefined,
+        bufferMinutes: parseNumber(venue.bufferMinutes, 30),
+        lat: venue.lat ? parseNumber(venue.lat, 0) : undefined,
+        lng: venue.lng ? parseNumber(venue.lng, 0) : undefined,
       });
 
-      if (venue.amenities) {
-        setAmenities(venue.amenities.map((a: any) => a.name));
+      if (venue.amenities && Array.isArray(venue.amenities)) {
+        setAmenities(venue.amenities.map((a: any) => a.name || a));
       }
 
-      if (venue.images) {
-        setUploadedImages(venue.images.map((img: any) => img.path));
+      if (venue.images && Array.isArray(venue.images)) {
+        setUploadedImages(venue.images.map((img: any) => img.path || img.imageURL || img));
+      }
+
+      if (venue.availabilityRules && Array.isArray(venue.availabilityRules)) {
+        setAvailabilityRules(venue.availabilityRules.map((rule: any) => ({
+          dayOfWeek: rule.dayOfWeek,
+          openTime: rule.openTime,
+          closeTime: rule.closeTime,
+        })));
+      }
+
+      if (venue.blackouts && Array.isArray(venue.blackouts)) {
+        setBlackouts(venue.blackouts.map((blackout: any) => ({
+          startDateTime: blackout.startDateTime,
+          endDateTime: blackout.endDateTime,
+          reason: blackout.reason,
+        })));
       }
     }
-  }, [venue, isEdit, form]);
+  }, [venue, isEdit, form, venueLoading]);
 
   const createVenueMutation = useMutation({
     mutationFn: async (data: VenueFormData) => {
@@ -146,6 +180,16 @@ export default function VenueForm() {
           await postWithAuth(`/api/venues/${newVenue.id}/amenities`, { name: amenity });
         }
 
+        // Add availability rules
+        for (const rule of availabilityRules) {
+          await postWithAuth(`/api/venues/${newVenue.id}/availability-rules`, rule);
+        }
+
+        // Add blackouts
+        for (const blackout of blackouts) {
+          await postWithAuth(`/api/venues/${newVenue.id}/blackouts`, blackout);
+        }
+
         queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
         toast({
           title: "Venue Created",
@@ -153,11 +197,11 @@ export default function VenueForm() {
         });
         router.push('/host/dashboard');
       } catch (error) {
-        console.error('Error adding amenities:', error);
-        // Still show success for venue creation, but log amenity error
+        console.error('Error adding venue details:', error);
+        // Still show success for venue creation, but log error
         toast({
           title: "Venue Created",
-          description: "Your venue has been created, but there was an issue adding some amenities.",
+          description: "Your venue has been created, but there was an issue adding some details.",
         });
         router.push('/host/dashboard');
       }
@@ -185,27 +229,35 @@ export default function VenueForm() {
 
   const updateVenueMutation = useMutation({
     mutationFn: async (data: VenueFormData) => {
-      const response = await fetch(`/api/venues/${params.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update venue');
-      }
-
-      return response.json();
+      return venueApi.update(params.id as string, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/venues', params.id] });
-      toast({
-        title: "Venue Updated",
-        description: "Your venue has been updated successfully.",
-      });
-      router.push('/host/dashboard');
+    onSuccess: async () => {
+      try {
+        // Update availability rules
+        for (const rule of availabilityRules) {
+          await postWithAuth(`/api/venues/${params.id}/availability-rules`, rule);
+        }
+
+        // Update blackouts
+        for (const blackout of blackouts) {
+          await postWithAuth(`/api/venues/${params.id}/blackouts`, blackout);
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
+        queryClient.invalidateQueries({ queryKey: ['venues', params.id] });
+        toast({
+          title: "Venue Updated",
+          description: "Your venue has been updated successfully.",
+        });
+        router.push('/host/dashboard');
+      } catch (error) {
+        console.error('Error updating venue details:', error);
+        toast({
+          title: "Venue Updated",
+          description: "Your venue has been updated, but there was an issue updating some details.",
+        });
+        router.push('/host/dashboard');
+      }
     },
     onError: (error) => {
       toast({
@@ -283,6 +335,18 @@ export default function VenueForm() {
 
   if (!isAuthenticated || (user?.role !== 'host' && user?.role !== 'admin')) {
     return null;
+  }
+
+  // Show loading state when fetching venue data for editing
+  if (isEdit && venueLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading venue data...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -579,6 +643,174 @@ export default function VenueForm() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Availability Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Availability Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Availability Rules */}
+                <div>
+                  <h3 className="text-lg font-medium text-foreground mb-4">Weekly Availability</h3>
+                  <div className="space-y-4">
+                    {availabilityRules.map((rule, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 border border-border rounded-lg">
+                        <div className="flex-1">
+                          <select
+                            value={rule.dayOfWeek}
+                            onChange={(e) => {
+                              const newRules = [...availabilityRules];
+                              newRules[index].dayOfWeek = parseInt(e.target.value);
+                              setAvailabilityRules(newRules);
+                            }}
+                            className="w-full p-2 border border-input rounded-md"
+                          >
+                            <option value={0}>Sunday</option>
+                            <option value={1}>Monday</option>
+                            <option value={2}>Tuesday</option>
+                            <option value={3}>Wednesday</option>
+                            <option value={4}>Thursday</option>
+                            <option value={5}>Friday</option>
+                            <option value={6}>Saturday</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="time"
+                            value={rule.openTime}
+                            onChange={(e) => {
+                              const newRules = [...availabilityRules];
+                              newRules[index].openTime = e.target.value;
+                              setAvailabilityRules(newRules);
+                            }}
+                            className="w-full p-2 border border-input rounded-md"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="time"
+                            value={rule.closeTime}
+                            onChange={(e) => {
+                              const newRules = [...availabilityRules];
+                              newRules[index].closeTime = e.target.value;
+                              setAvailabilityRules(newRules);
+                            }}
+                            className="w-full p-2 border border-input rounded-md"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newRules = availabilityRules.filter((_, i) => i !== index);
+                            setAvailabilityRules(newRules);
+                          }}
+                        >
+                          <i className="fas fa-trash"></i>
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setAvailabilityRules([...availabilityRules, {
+                          dayOfWeek: 1,
+                          openTime: '09:00',
+                          closeTime: '17:00',
+                        }]);
+                      }}
+                    >
+                      <i className="fas fa-plus mr-2"></i>
+                      Add Availability Rule
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Blackouts */}
+                <div>
+                  <h3 className="text-lg font-medium text-foreground mb-4">Blackout Periods</h3>
+                  <div className="space-y-4">
+                    {blackouts.map((blackout, index) => (
+                      <div key={index} className="p-4 border border-border rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Start Date & Time</label>
+                            <input
+                              type="datetime-local"
+                              value={blackout.startDateTime}
+                              onChange={(e) => {
+                                const newBlackouts = [...blackouts];
+                                newBlackouts[index].startDateTime = e.target.value;
+                                setBlackouts(newBlackouts);
+                              }}
+                              className="w-full p-2 border border-input rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">End Date & Time</label>
+                            <input
+                              type="datetime-local"
+                              value={blackout.endDateTime}
+                              onChange={(e) => {
+                                const newBlackouts = [...blackouts];
+                                newBlackouts[index].endDateTime = e.target.value;
+                                setBlackouts(newBlackouts);
+                              }}
+                              className="w-full p-2 border border-input rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Reason</label>
+                            <input
+                              type="text"
+                              value={blackout.reason}
+                              onChange={(e) => {
+                                const newBlackouts = [...blackouts];
+                                newBlackouts[index].reason = e.target.value;
+                                setBlackouts(newBlackouts);
+                              }}
+                              placeholder="e.g., Maintenance, Private Event"
+                              className="w-full p-2 border border-input rounded-md"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newBlackouts = blackouts.filter((_, i) => i !== index);
+                            setBlackouts(newBlackouts);
+                          }}
+                        >
+                          <i className="fas fa-trash mr-2"></i>
+                          Remove Blackout
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const now = new Date();
+                        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                        setBlackouts([...blackouts, {
+                          startDateTime: now.toISOString().slice(0, 16),
+                          endDateTime: tomorrow.toISOString().slice(0, 16),
+                          reason: '',
+                        }]);
+                      }}
+                    >
+                      <i className="fas fa-plus mr-2"></i>
+                      Add Blackout Period
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

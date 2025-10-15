@@ -1,5 +1,5 @@
 // Application constants
-export const APP_NAME = "Stagea";
+export const APP_NAME = "Eventorove";
 
 // Timezone
 export const CAIRO_TIMEZONE = "Africa/Cairo";
@@ -14,7 +14,7 @@ export const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 export const VENUE_CATEGORIES = [
   "Meeting Rooms",
   "Event Halls",
-  "Creative Studios", 
+  "Creative Studios",
   "Outdoor Spaces",
   "Conference Centers",
   "Workshops",
@@ -26,7 +26,7 @@ export const VENUE_CATEGORIES = [
 export const CAIRO_CITIES = [
   "New Cairo",
   "Heliopolis",
-  "Zamalek", 
+  "Zamalek",
   "Maadi",
   "Dokki",
   "Giza",
@@ -38,7 +38,7 @@ export const CAIRO_CITIES = [
 export const COMMON_AMENITIES = [
   "Wi-Fi",
   "Parking",
-  "A/V Equipment", 
+  "A/V Equipment",
   "Catering",
   "Air Conditioning",
   "Coffee Service",
@@ -67,7 +67,7 @@ export const CURRENCY = {
 // Venue status options
 export const VENUE_STATUSES = {
   DRAFT: "draft",
-  PENDING_APPROVAL: "pending_approval", 
+  PENDING_APPROVAL: "pending_approval",
   APPROVED: "approved",
   REJECTED: "rejected",
 } as const;
@@ -75,7 +75,7 @@ export const VENUE_STATUSES = {
 // Booking status options
 export const BOOKING_STATUSES = {
   CONFIRMED: "confirmed",
-  CANCELLED: "cancelled", 
+  CANCELLED: "cancelled",
 } as const;
 
 // User roles
@@ -110,16 +110,16 @@ export const FEATURES = {
 
 // Contact information
 export const CONTACT = {
-  SUPPORT_EMAIL: "support@stagea.com",
+  SUPPORT_EMAIL: "support@Eventorove.com",
   PHONE: "+20 xxx xxxx xxx",
 } as const;
 
 // Social links
 export const SOCIAL_LINKS = {
-  FACEBOOK: "https://facebook.com/stagea",
-  TWITTER: "https://twitter.com/stagea", 
-  INSTAGRAM: "https://instagram.com/stagea",
-  LINKEDIN: "https://linkedin.com/company/stagea",
+  FACEBOOK: "https://facebook.com/Eventorove",
+  TWITTER: "https://twitter.com/Eventorove",
+  INSTAGRAM: "https://instagram.com/Eventorove",
+  LINKEDIN: "https://linkedin.com/company/Eventorove",
 } as const;
 
 // Cache durations (in seconds)
@@ -171,7 +171,7 @@ export const DEFAULT_COORDINATES = {
 export const MAP_STYLES = [
   {
     featureType: "poi",
-    elementType: "labels", 
+    elementType: "labels",
     stylers: [{ visibility: "off" }],
   },
 ] as const;
@@ -238,7 +238,7 @@ export const DAYS_OF_WEEK = [
 
 // Export types for better type safety
 export type VenueCategory = typeof VENUE_CATEGORIES[number];
-export type CairoCity = typeof CAIRO_CITIES[number]; 
+export type CairoCity = typeof CAIRO_CITIES[number];
 export type CommonAmenity = typeof COMMON_AMENITIES[number];
 export type VenueStatus = typeof VENUE_STATUSES[keyof typeof VENUE_STATUSES];
 export type BookingStatus = typeof BOOKING_STATUSES[keyof typeof BOOKING_STATUSES];

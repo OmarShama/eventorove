@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '@/types/api';
 import { jwtDecode } from 'jwt-decode';
+import { authApi } from '@/lib/api';
 
 interface DecodedToken {
   email: string;
@@ -32,11 +33,17 @@ export const refreshAuth = () => {
 
 export function useAuth() {
   const [authState, setAuthState] = useState(globalAuthState);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    // Set client-side flag to prevent hydration mismatches
+    setIsClient(true);
+  }, []);
 
-    const checkAuth = () => {
+  useEffect(() => {
+    if (!isClient || typeof window === 'undefined') return;
+
+    const checkAuth = async () => {
       const token = localStorage.getItem('token');
 
       if (token) {
@@ -52,21 +59,44 @@ export function useAuth() {
               isLoading: false,
             };
           } else {
-            const userData: User = {
-              id: decoded.sub,
-              email: decoded.email,
-              role: decoded.role,
-              firstName: '',
-              lastName: '',
-              profileImageUrl: '',
-              createdAt: '',
-              updatedAt: '',
-            };
-            globalAuthState = {
-              user: userData,
-              isAuthenticated: true,
-              isLoading: false,
-            };
+            // Fetch full user data from API
+            try {
+              const response = await authApi.getCurrentUser();
+              if (response.success && response.data) {
+                globalAuthState = {
+                  user: response.data,
+                  isAuthenticated: true,
+                  isLoading: false,
+                };
+              } else {
+                // Token exists but API call failed, remove token
+                localStorage.removeItem('token');
+                globalAuthState = {
+                  user: null,
+                  isAuthenticated: false,
+                  isLoading: false,
+                };
+              }
+            } catch (error) {
+              console.error('API call failed, using token data as fallback:', error);
+              // API call failed, but token exists - use token data as fallback
+              const userData: User = {
+                id: decoded.sub,
+                email: decoded.email,
+                role: decoded.role,
+                firstName: '',
+                lastName: '',
+                profileImageUrl: '',
+                emailVerifiedAt: '',
+                createdAt: '',
+                updatedAt: '',
+              };
+              globalAuthState = {
+                user: userData,
+                isAuthenticated: true,
+                isLoading: false,
+              };
+            }
           }
         } catch (error) {
           console.error('Invalid token:', error);
@@ -102,7 +132,18 @@ export function useAuth() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [isClient]);
+
+  // Return loading state during SSR or before client hydration
+  if (!isClient) {
+    return {
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      error: null,
+      isGuest: true,
+    };
+  }
 
   return {
     user: authState.user,

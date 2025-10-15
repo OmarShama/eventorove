@@ -11,6 +11,7 @@ import { VenuesService } from './venues.service';
 import { HostController } from './host.controller';
 import { AdminController } from './admin.controller';
 import { BookingsModule } from '../bookings/bookings.module';
+import { UsersModule } from '../users/users.module';
 import { User } from '../users/user.entity';
 import { Booking } from '../bookings/booking.entity';
 import { AuthModule } from '../auth/auth.module';
@@ -28,6 +29,7 @@ import { AuthModule } from '../auth/auth.module';
             Booking,
         ]),
         BookingsModule,
+        UsersModule,
         AuthModule,
     ],
     controllers: [VenuesController, HostController, AdminController],

@@ -79,6 +79,15 @@ This document captures the agreed business workflow for adding a new venue, the 
 - Data model and storage for venues, hosts, documents, agreements (ToS acceptance record), reviews, audit logs.
 - Notifications: transactional emails for submission received, needs info requested, approved/rejected.
 
+#### Booking (MVP)
+- Booking states: Pending → Confirmed → Canceled → Expired.
+- Flow: request-to-book (host confirms). Instant book can wait.
+- Availability: venue open hours + blackout dates; prevent overlaps with conflict checks at confirm.
+- Pricing: simple flat hourly or daily rate; compute total + platform fee; show before confirm.
+- Cancellations: basic policy (e.g., free until 24h before start; after that, contact support).
+- Notifications: email to host on request; email to customer on confirm/cancel; booking detail page.
+- Admin tools: view/search bookings, change state (with audit), issue manual cancellations.
+
 ### Post-MVP (Can Wait)
 - Full KYC/KYB integration (liveness, UBO collection, automated sanctions/PEP checks).
 - E-sign integration with DocuSign/HelloSign (versioned agreements, signed PDF storage).
@@ -91,6 +100,14 @@ This document captures the agreed business workflow for adding a new venue, the 
 - Photo forensics (EXIF checks, stock image detection) and content moderation.
 - Enterprise workflows: MSAs, custom SLAs, field sales creation flows, custom pricing.
 - Analytics and reporting on conversion, approval rates, and risk metrics.
+
+#### Booking (Post-MVP)
+- Payments: Stripe (or similar) with preauth/escrow, split payouts, refunds, disputes.
+- Instant book toggle with lead-time, min/max durations, and buffer times.
+- Add-ons, deposits, coupons, promo codes, and taxes; downloadable invoices and receipts.
+- Calendar integrations: iCal feeds, Google Calendar sync, external marketplace sync.
+- Policy variants (flexible/moderate/strict) and no-show handling; partial refunds automation.
+- Multi-currency support and localized tax handling (VAT/GST) with proper invoices.
 
 ---
 

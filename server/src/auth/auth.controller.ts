@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Patch,
     Body,
     HttpException,
     HttpStatus,
@@ -39,7 +40,7 @@ export class AuthController {
                 // Mock admin user for development
                 const mockUser: UserDto = {
                     id: 'mock-admin-id',
-                    email: 'admin@stagea.com',
+                    email: 'admin@Eventorove.com',
                     firstName: 'Admin',
                     lastName: 'User',
                     role: 'admin',
@@ -161,6 +162,78 @@ export class AuthController {
                     error: error.message,
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    @Patch('user')
+    async updateProfile(
+        @Body() updateData: Partial<{ firstName: string; lastName: string; profileImageUrl: string }>,
+        @Session() session: any,
+    ): Promise<ApiResponse<UserDto>> {
+        try {
+            if (!session.userId) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        error: 'Not authenticated',
+                    },
+                    HttpStatus.UNAUTHORIZED,
+                );
+            }
+
+            const updatedUser = await this.authService.updateUser(session.userId, updateData);
+
+            return {
+                success: true,
+                data: updatedUser,
+                message: 'Profile updated successfully',
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    success: false,
+                    error: error.message,
+                },
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+    }
+
+    @Patch('password')
+    async changePassword(
+        @Body() passwordData: { currentPassword: string; newPassword: string },
+        @Session() session: any,
+    ): Promise<ApiResponse<null>> {
+        try {
+            if (!session.userId) {
+                throw new HttpException(
+                    {
+                        success: false,
+                        error: 'Not authenticated',
+                    },
+                    HttpStatus.UNAUTHORIZED,
+                );
+            }
+
+            await this.authService.changePassword(
+                session.userId,
+                passwordData.currentPassword,
+                passwordData.newPassword,
+            );
+
+            return {
+                success: true,
+                data: null,
+                message: 'Password changed successfully',
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    success: false,
+                    error: error.message,
+                },
+                HttpStatus.BAD_REQUEST,
             );
         }
     }

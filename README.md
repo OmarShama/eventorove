@@ -19,7 +19,7 @@ DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_USER=postgres
 DB_PASS=postgres
-DB_NAME=stagea
+DB_NAME=Eventorove
 
 # App
 PORT=5000
@@ -37,7 +37,7 @@ Make sure PostgreSQL is installed and running on your machine.
 
 Create the database:
 ```bash
-createdb stagea
+createdb Eventorove
 ```
 
 Run migrations:

@@ -2,9 +2,8 @@ import { ReactNode } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { authApi } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,8 +21,6 @@ export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
   const location = router.pathname;
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
@@ -59,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center">
               <Link href="/" className="flex-shrink-0 flex items-center" data-testid="logo-link">
                 <i className="fas fa-map-marker-alt text-primary text-2xl mr-2"></i>
-                <span className="text-2xl font-bold text-primary">Stagea</span>
+                <span className="text-2xl font-bold text-primary">Eventorove</span>
               </Link>
             </div>
 
@@ -75,7 +72,7 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Explore
                 </Link>
-                {!isLoading && isAuthenticated && user?.role === 'host' && (
+                {!isLoading && isAuthenticated && (user?.role === 'host' || user?.role === 'admin') && (
                   <Link
                     href="/host/dashboard"
                     className={`transition-colors ${location.startsWith('/host')
@@ -129,15 +126,40 @@ export default function Layout({ children }: LayoutProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href="/bookings" data-testid="nav-my-bookings">My Bookings</Link>
+                      <Link href="/profile" data-testid="nav-profile">Profile</Link>
                     </DropdownMenuItem>
-                    {user?.role === 'host' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" data-testid="nav-settings">Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/my-bookings" data-testid="nav-my-bookings">My Bookings</Link>
+                    </DropdownMenuItem>
+                    {(user?.role === 'host' || user?.role === 'admin') && (
                       <>
                         <DropdownMenuItem asChild>
                           <Link href="/host/dashboard" data-testid="nav-host-menu">Host Dashboard</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
+                          <Link href="/host/analytics" data-testid="nav-host-analytics">Analytics</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/host/calendar" data-testid="nav-host-calendar">Calendar</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                           <Link href="/host/venues/new" data-testid="nav-list-venue">List New Venue</Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {user?.role === 'admin' && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/users" data-testid="nav-admin-users">User Management</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/analytics" data-testid="nav-admin-analytics">Platform Analytics</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/settings" data-testid="nav-admin-settings">System Settings</Link>
                         </DropdownMenuItem>
                       </>
                     )}

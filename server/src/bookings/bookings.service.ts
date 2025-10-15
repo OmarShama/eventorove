@@ -8,6 +8,7 @@ import {
   CreateBookingRequest,
   BookingWithDetailsDto,
 } from '../shared/types';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 
 @Injectable()
 export class BookingsService {
@@ -20,10 +21,11 @@ export class BookingsService {
     private userRepository: Repository<User>,
   ) { }
 
-  async createBooking(createBookingDto: CreateBookingRequest): Promise<BookingWithDetailsDto> {
+  async createBooking(createBookingDto: CreateBookingRequest, guestId: string): Promise<BookingWithDetailsDto> {
     // Validate venue exists and is approved
     const venue = await this.venueRepository.findOne({
       where: { id: createBookingDto.venueId },
+      relations: ['availabilityRules', 'blackouts', 'bookings']
     });
 
     if (!venue) {
@@ -53,13 +55,54 @@ export class BookingsService {
       throw new Error(`Venue capacity is ${venue.capacity} people`);
     }
 
+    // Check availability
+    const dayOfWeek = startDateTime.getDay();
+    const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
+    if (dayRule) {
+      const [openHour, openMinute] = dayRule.openTime.split(':').map(Number);
+      const [closeHour, closeMinute] = dayRule.closeTime.split(':').map(Number);
+
+      const openTime = new Date(startDateTime);
+      openTime.setHours(openHour, openMinute, 0, 0);
+
+      const closeTime = new Date(startDateTime);
+      closeTime.setHours(closeHour, closeMinute, 0, 0);
+
+      if (startDateTime < openTime || endDateTime > closeTime) {
+        throw new Error(`Venue is only available from ${dayRule.openTime} to ${dayRule.closeTime} on ${this.getDayName(dayOfWeek)}`);
+      }
+    }
+
+    // Check blackouts
+    const conflictingBlackout = venue.blackouts?.find(blackout => {
+      const blackoutStart = new Date(blackout.startDateTime);
+      const blackoutEnd = new Date(blackout.endDateTime);
+      return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
+    });
+
+    if (conflictingBlackout) {
+      throw new Error(`Venue is unavailable during this time: ${conflictingBlackout.reason}`);
+    }
+
+    // Check existing bookings
+    const conflictingBooking = venue.bookings?.find(booking => {
+      if (booking.status === 'cancelled') return false;
+      const bookingStart = new Date(booking.startDateTime);
+      const bookingEnd = new Date(booking.endDateTime);
+      return (startDateTime < bookingEnd && endDateTime > bookingStart);
+    });
+
+    if (conflictingBooking) {
+      throw new Error('This time slot is already booked');
+    }
+
     // Calculate total price
     const hours = Math.ceil(durationMinutes / 30) * 0.5;
     const basePrice = parseFloat(venue.baseHourlyPriceEGP.toString());
     const totalPrice = hours * basePrice;
 
-    // Get guest user (this should come from authentication context)
-    const guest = await this.userRepository.findOne({ where: { id: 'current-user-id' } });
+    // Get guest user
+    const guest = await this.userRepository.findOne({ where: { id: guestId } });
     if (!guest) {
       throw new Error('User not found');
     }
@@ -78,6 +121,11 @@ export class BookingsService {
 
     const savedBooking = await this.bookingRepository.save(booking);
     return this.getBookingById(savedBooking.id);
+  }
+
+  private getDayName(dayOfWeek: number): string {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayOfWeek];
   }
 
   async getBookingById(id: string): Promise<BookingWithDetailsDto | null> {
@@ -127,11 +175,72 @@ export class BookingsService {
     return bookings.map(booking => this.mapBookingToDto(booking));
   }
 
+  async cancelBooking(
+    bookingId: string,
+    userId: string,
+    cancelBookingDto: CancelBookingDto,
+  ): Promise<{ refundAmount: number; cancellationFee: number }> {
+    // Find the booking and verify ownership
+    const booking = await this.bookingRepository.findOne({
+      where: { id: bookingId, guest: { id: userId } },
+      relations: ['venue', 'guest'],
+    });
+
+    if (!booking) {
+      throw new Error('Booking not found or you do not have permission to cancel it');
+    }
+
+    // Check if booking can be cancelled
+    if (booking.status === 'cancelled') {
+      throw new Error('Booking is already cancelled');
+    }
+
+    if (booking.status === 'completed') {
+      throw new Error('Cannot cancel a completed booking');
+    }
+
+    // Calculate refund based on cancellation policy
+    const now = new Date();
+    const eventDate = new Date(booking.startDateTime);
+    const hoursUntilEvent = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    let refundPercentage = 0;
+    if (hoursUntilEvent > 72) {
+      refundPercentage = 0.9; // 90% refund
+    } else if (hoursUntilEvent > 24) {
+      refundPercentage = 0.5; // 50% refund
+    } else if (hoursUntilEvent > 2) {
+      refundPercentage = 0.25; // 25% refund
+    } else {
+      refundPercentage = 0; // No refund
+    }
+
+    const refundAmount = booking.totalPriceEGP * refundPercentage;
+    const cancellationFee = booking.totalPriceEGP - refundAmount;
+
+    // Update booking status
+    booking.status = 'cancelled';
+    booking.updatedAt = new Date();
+
+    // In a real implementation, you would:
+    // 1. Process the refund through payment gateway
+    // 2. Send cancellation email to guest and venue
+    // 3. Update any related records (availability, etc.)
+    // 4. Log the cancellation reason and details
+
+    await this.bookingRepository.save(booking);
+
+    return {
+      refundAmount,
+      cancellationFee,
+    };
+  }
+
   private mapBookingToDto(booking: any): BookingWithDetailsDto {
     return {
       id: booking.id,
-      venueId: booking.venueId,
-      guestId: booking.guestId,
+      venueId: booking.venue?.id,
+      guestId: booking.guest?.id,
       startDateTime: booking.startDateTime?.toISOString(),
       endDateTime: booking.endDateTime?.toISOString(),
       status: booking.status,

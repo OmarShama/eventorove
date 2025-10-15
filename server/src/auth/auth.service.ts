@@ -102,6 +102,46 @@ export class AuthService {
         }
     }
 
+    async updateUser(
+        id: string,
+        updateData: Partial<{ firstName: string; lastName: string; profileImageUrl: string }>,
+    ): Promise<UserDto> {
+        const user = await this.userRepository.findOne({ where: { id } });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Update fields
+        if (updateData.firstName !== undefined) user.firstName = updateData.firstName;
+        if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
+        if (updateData.profileImageUrl !== undefined) user.profileImageUrl = updateData.profileImageUrl;
+
+        const updatedUser = await this.userRepository.save(user);
+        return this.mapUserToDto(updatedUser);
+    }
+
+    async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+        const user = await this.userRepository.findOne({
+            where: { id },
+            select: ['id', 'email', 'password'],
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await this.verifyPassword(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
+            throw new Error('Current password is incorrect');
+        }
+
+        // Hash and save new password
+        const hashedNewPassword = await this.hashPassword(newPassword);
+        await this.userRepository.update(id, { password: hashedNewPassword });
+    }
+
     private mapUserToDto(user: User): UserDto {
         return {
             id: user.id,

@@ -132,24 +132,81 @@ export class VenuesService {
   }
 
   async checkAvailability(id: string, query: AvailabilityCheckRequest): Promise<AvailabilityCheckResponse> {
-    // This is a simplified implementation
-    // In a real application, you would check against bookings, availability rules, and blackouts
-    const venue = await this.venueRepository.findOne({ where: { id } });
+    const venue = await this.venueRepository.findOne({
+      where: { id },
+      relations: ['availabilityRules', 'blackouts', 'bookings']
+    });
 
     if (!venue) {
       throw new Error('Venue not found');
     }
 
-    // For now, return available = true
-    // In a real implementation, you would check:
-    // 1. Venue availability rules for the day/time
-    // 2. Existing bookings that conflict
-    // 3. Blackout periods
+    const startDateTime = new Date(query.start);
+    const endDateTime = new Date(startDateTime.getTime() + query.durationMinutes * 60 * 1000);
+    const dayOfWeek = startDateTime.getDay();
+
+    // Check availability rules
+    const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
+    if (dayRule) {
+      const [openHour, openMinute] = dayRule.openTime.split(':').map(Number);
+      const [closeHour, closeMinute] = dayRule.closeTime.split(':').map(Number);
+
+      const openTime = new Date(startDateTime);
+      openTime.setHours(openHour, openMinute, 0, 0);
+
+      const closeTime = new Date(startDateTime);
+      closeTime.setHours(closeHour, closeMinute, 0, 0);
+
+      if (startDateTime < openTime || endDateTime > closeTime) {
+        return {
+          available: false,
+          conflicts: [`Venue is only available from ${dayRule.openTime} to ${dayRule.closeTime} on ${this.getDayName(dayOfWeek)}`],
+          suggestedTimes: [],
+        };
+      }
+    }
+
+    // Check blackouts
+    const conflictingBlackout = venue.blackouts?.find(blackout => {
+      const blackoutStart = new Date(blackout.startDateTime);
+      const blackoutEnd = new Date(blackout.endDateTime);
+      return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
+    });
+
+    if (conflictingBlackout) {
+      return {
+        available: false,
+        conflicts: [`Venue is unavailable during this time: ${conflictingBlackout.reason}`],
+        suggestedTimes: [],
+      };
+    }
+
+    // Check existing bookings
+    const conflictingBooking = venue.bookings?.find(booking => {
+      if (booking.status === 'cancelled') return false;
+      const bookingStart = new Date(booking.startDateTime);
+      const bookingEnd = new Date(booking.endDateTime);
+      return (startDateTime < bookingEnd && endDateTime > bookingStart);
+    });
+
+    if (conflictingBooking) {
+      return {
+        available: false,
+        conflicts: ['This time slot is already booked'],
+        suggestedTimes: [],
+      };
+    }
+
     return {
       available: true,
       conflicts: [],
       suggestedTimes: [],
     };
+  }
+
+  private getDayName(dayOfWeek: number): string {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayOfWeek];
   }
 
   async addVenueImage(venueId: string, imageURL: string): Promise<any> {
@@ -196,6 +253,38 @@ export class VenuesService {
     });
 
     return await this.venuePackageRepository.save(venuePackage);
+  }
+
+  async addAvailabilityRule(venueId: string, ruleData: { dayOfWeek: number; openTime: string; closeTime: string }): Promise<any> {
+    const venue = await this.venueRepository.findOne({ where: { id: venueId } });
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+
+    const rule = this.availabilityRuleRepository.create({
+      venueId,
+      venue,
+      ...ruleData,
+    });
+
+    return await this.availabilityRuleRepository.save(rule);
+  }
+
+  async addBlackout(venueId: string, blackoutData: { startDateTime: string; endDateTime: string; reason: string }): Promise<any> {
+    const venue = await this.venueRepository.findOne({ where: { id: venueId } });
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+
+    const blackout = this.blackoutRepository.create({
+      venueId,
+      venue,
+      startDateTime: new Date(blackoutData.startDateTime),
+      endDateTime: new Date(blackoutData.endDateTime),
+      reason: blackoutData.reason,
+    });
+
+    return await this.blackoutRepository.save(blackout);
   }
 
   async getUploadUrl(venueId: string): Promise<any> {

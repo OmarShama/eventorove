@@ -83,7 +83,7 @@ export default function Login() {
                 <div className="text-center">
                     <Link href="/" className="inline-flex items-center">
                         <i className="fas fa-map-marker-alt text-primary text-3xl mr-2"></i>
-                        <span className="text-3xl font-bold text-primary">Stagea</span>
+                        <span className="text-3xl font-bold text-primary">Eventorove</span>
                     </Link>
                     <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
                         Sign in to your account
@@ -169,7 +169,7 @@ export default function Login() {
 
                 <div className="text-center">
                     <p className="text-sm text-gray-600">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <Link href="/register" className="font-medium text-primary hover:text-primary/80">
                             Sign up here
                         </Link>

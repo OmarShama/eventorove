@@ -38,7 +38,7 @@ export default function Booking() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
-          <p className="text-muted-foreground mb-4">The booking you're looking for doesn't exist.</p>
+          <p className="text-muted-foreground mb-4">The booking you&apos;re looking for doesn&apos;t exist.</p>
           <Link href="/">
             <Button>
               Back to Home
@@ -191,7 +191,7 @@ export default function Booking() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-8">
-            Booking ID: {booking.id} • Need help? Contact support@stagea.com
+            Booking ID: {booking.id} • Need help? Contact support@Eventorove.com
           </p>
         </CardContent>
       </Card>

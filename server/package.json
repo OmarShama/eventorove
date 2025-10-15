@@ -1,7 +1,7 @@
 {
-    "name": "stagea-server",
+    "name": "Eventorove-server",
     "version": "1.0.0",
-    "description": "StageA Backend Server",
+    "description": "Eventorove Backend Server",
     "private": true,
     "scripts": {
         "build": "nest build",
