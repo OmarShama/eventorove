@@ -6,10 +6,10 @@ services:
     container_name: mononestnext_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: stagea
+      POSTGRES_DB: eventorove
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_SCHEMA: stagea_local
+      POSTGRES_SCHEMA: eventorove_dev
     ports:
       - "55432:5432"
     volumes:
@@ -31,8 +31,8 @@ services:
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASS: postgres
-      DB_NAME: stagea
-      DB_SCHEMA: stagea_local
+      DB_NAME: eventorove
+      DB_SCHEMA: eventorove_dev
       DB_SYNC: false
       JWT_SECRET: your-jwt-secret-key-change-this-in-production
       PORT: 3001
