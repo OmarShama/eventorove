@@ -93,10 +93,19 @@ railway up
 
 ## 🐛 Troubleshooting
 
+### If Build Fails with "npm ci" Error
+
+If you see an error like:
+```
+npm error The `npm ci` command can only install with an existing package-lock.json
+```
+
+**Solution**: The Dockerfiles have been updated to use `npm install` instead of `npm ci`. Make sure you're using the latest Dockerfile from the repository.
+
 ### If Build Still Fails
 
 1. **Check the build logs** in Railway dashboard
-2. **Make sure you selected the correct root directory** (`server` or `client`)
+2. **Make sure you selected the correct root directory** (Leave empty - uses root)
 3. **Verify your package.json has the right scripts**:
    - Server: `"start:prod": "node dist/main"`
    - Client: `"start": "next start -p ${PORT:-3000}"`
