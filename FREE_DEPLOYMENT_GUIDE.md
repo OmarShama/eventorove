@@ -40,12 +40,12 @@ This guide will help you deploy your MonoNestNext app completely FREE using the 
    JWT_SECRET=your-super-secret-jwt-key
    PORT=3001
    HOST=0.0.0.0
-   CORS_ORIGIN=https://your-client-app.railway.app
-   NEXT_PUBLIC_API_URL=https://your-server-app.railway.app/api
+   CORS_ORIGIN=https://eventorove-fe.railway.app
+   NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api
    ```
 7. **Click "Deploy"**
 8. **Wait for deployment** (5-10 minutes)
-9. **Copy the generated URL** (e.g., `https://your-server-app.railway.app`)
+9. **Copy the generated URL** (e.g., `https://eventorove-be.railway.app`)
 
 ### Step 3: Deploy Frontend (Client)
 
@@ -53,22 +53,22 @@ This guide will help you deploy your MonoNestNext app completely FREE using the 
 2. **Select the `client` folder**
 3. **Add environment variables**:
    ```
-   NEXT_PUBLIC_API_URL=https://your-server-app.railway.app/api
+   NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api
    NEXT_PUBLIC_ENV=production
    ```
 4. **Click "Deploy"**
-5. **Copy the generated URL** (e.g., `https://your-client-app.railway.app`)
+5. **Copy the generated URL** (e.g., `https://eventorove-fe.railway.app`)
 
 ### Step 4: Connect Your Apps
 
 1. **Update server CORS**:
    - Go to your server project on Railway
-   - Add environment variable: `CORS_ORIGIN=https://your-client-app.railway.app`
+   - Add environment variable: `CORS_ORIGIN=https://eventorove-fe.railway.app`
    - Redeploy
 
 2. **Update client API URL**:
    - Go to your client project on Railway
-   - Update: `NEXT_PUBLIC_API_URL=https://your-server-app.railway.app/api`
+   - Update: `NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api`
    - Redeploy
 
 ---
