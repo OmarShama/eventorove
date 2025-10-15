@@ -5,7 +5,6 @@
     "dockerfilePath": "client/Dockerfile"
   },
   "deploy": {
-    "startCommand": "cd client && npm run start",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

@@ -102,6 +102,15 @@ npm error The `npm ci` command can only install with an existing package-lock.js
 
 **Solution**: The Dockerfiles have been updated to use `npm install` instead of `npm ci`. Make sure you're using the latest Dockerfile from the repository.
 
+### If Container Fails to Start with "cd command not found"
+
+If you see an error like:
+```
+The executable `cd` could not be found.
+```
+
+**Solution**: The railway.json files have been updated to remove the `startCommand` since Docker containers use the CMD from the Dockerfile directly.
+
 ### If Build Still Fails
 
 1. **Check the build logs** in Railway dashboard
