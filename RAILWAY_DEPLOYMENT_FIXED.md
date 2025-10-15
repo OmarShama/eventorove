@@ -18,10 +18,10 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 3. **Click "New Project" → "Deploy from GitHub repo"**
 4. **Select your repository**
 5. **IMPORTANT**: In the deployment settings, set:
-   - **Root Directory**: `server`
+   - **Root Directory**: (Leave empty - uses root)
    - **Build Command**: (Leave empty - uses Dockerfile)
    - **Start Command**: (Leave empty - uses railway.json)
-   - **Dockerfile Path**: `Dockerfile` (should auto-detect)
+   - **Config File Path**: `server/railway.json`
 6. **Add Environment Variables**:
    ```
    NODE_ENV=production
@@ -43,10 +43,10 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 1. **Create another Railway project**
 2. **Select your repository again**
 3. **IMPORTANT**: In the deployment settings, set:
-   - **Root Directory**: `client`
+   - **Root Directory**: (Leave empty - uses root)
    - **Build Command**: (Leave empty - uses Dockerfile)
    - **Start Command**: (Leave empty - uses railway.json)
-   - **Dockerfile Path**: `Dockerfile` (should auto-detect)
+   - **Config File Path**: `client/railway.json`
 4. **Add Environment Variables**:
    ```
    NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api
