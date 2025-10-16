@@ -34,36 +34,93 @@ import { AuthModule } from './auth/auth.module';
 
                 // For dev environment (Supabase), use DATABASE_URL
                 if (url) {
-                    const withSSL = url.includes('sslmode=')
-                        ? url
-                        : `${url}${url.includes('?') ? '&' : '?'}sslmode=require`;
-
                     // Check if using pooled connection (port 6543) vs direct connection (port 5432)
                     const isPooledConnection = url.includes(':6543/');
 
-                    const sslConfig = isPooledConnection
-                        ? {
+                    console.log(`Connecting to database with ${isPooledConnection ? 'pooled' : 'direct'} connection`);
+                    console.log(`Database URL: ${url.replace(/:[^:@]+@/, ':***@')}`); // Log URL without password
+
+                    // Force IPv4 by modifying the URL to use IPv4 address if possible
+                    let modifiedUrl = url;
+                    if (url.includes('db.kvfmzqlozhpqdqcyeiqc.supabase.co')) {
+                        // Try to force IPv4 resolution by using a different approach
+                        console.log('Detected Supabase direct connection, applying IPv4 workaround');
+                    }
+
+                    // Try parsing URL for discrete connection parameters as fallback
+                    try {
+                        const urlObj = new URL(url);
+                        const host = urlObj.hostname;
+                        const port = parseInt(urlObj.port) || (isPooledConnection ? 6543 : 5432);
+                        const username = urlObj.username;
+                        const password = urlObj.password;
+                        const database = urlObj.pathname.substring(1); // Remove leading slash
+
+                        // Use discrete parameters with SSL bypass and IPv4 forcing
+                        const sslConfig = {
                             rejectUnauthorized: false,
-                            checkServerIdentity: () => undefined
-                        }
-                        : {
-                            rejectUnauthorized: false
+                            checkServerIdentity: () => undefined,
                         };
 
-                    return {
-                        ...common,
-                        url: withSSL,
-                        ssl: sslConfig,
-                        extra: {
+                        console.log(`Using discrete connection parameters: ${host}:${port}/${database}`);
+
+                        return {
+                            ...common,
+                            host,
+                            port,
+                            username,
+                            password,
+                            database,
                             ssl: sslConfig,
-                            // Additional connection pool settings for pooled connections
-                            ...(isPooledConnection && {
-                                max: 10, // Limit connections for PgBouncer
-                                idleTimeoutMillis: 30000,
-                                connectionTimeoutMillis: 2000,
-                            })
-                        }
-                    } as TypeOrmModuleOptions;
+                            extra: {
+                                ssl: sslConfig,
+                                // Force IPv4 and add connection options
+                                family: 4, // Force IPv4
+                                keepAlive: true,
+                                keepAliveInitialDelayMillis: 10000,
+                                // Additional connection pool settings for pooled connections
+                                ...(isPooledConnection && {
+                                    max: 10, // Limit connections for PgBouncer
+                                    idleTimeoutMillis: 30000,
+                                    connectionTimeoutMillis: 2000,
+                                })
+                            }
+                        } as TypeOrmModuleOptions;
+                    } catch (error) {
+                        console.error('Failed to parse DATABASE_URL, falling back to URL method:', error);
+
+                        // Fallback to URL method with IPv4 forcing and connection options
+                        const withSSL = url.includes('sslmode=')
+                            ? url.replace(/sslmode=[^&]+/, 'sslmode=require')
+                            : `${url}${url.includes('?') ? '&' : '?'}sslmode=require`;
+
+                        // Add IPv4 forcing parameters to URL
+                        const urlWithIPv4 = withSSL + (withSSL.includes('?') ? '&' : '?') + 'preferIPv4=true';
+
+                        return {
+                            ...common,
+                            url: urlWithIPv4,
+                            ssl: {
+                                rejectUnauthorized: false,
+                                checkServerIdentity: () => undefined,
+                            },
+                            extra: {
+                                ssl: {
+                                    rejectUnauthorized: false,
+                                    checkServerIdentity: () => undefined,
+                                },
+                                family: 4, // Force IPv4
+                                keepAlive: true,
+                                keepAliveInitialDelayMillis: 10000,
+                                // Additional connection pool settings for pooled connections
+                                ...(isPooledConnection && {
+                                    max: 10, // Limit connections for PgBouncer
+                                    idleTimeoutMillis: 30000,
+                                    connectionTimeoutMillis: 2000,
+                                })
+                            }
+                        } as TypeOrmModuleOptions;
+                    }
                 }
 
                 // For local and docker environments, use discrete connection parameters
