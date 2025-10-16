@@ -61,8 +61,8 @@ export interface AvailabilityRuleDto {
 export interface BlackoutDto {
   id: string;
   venueId: string;
-  startDateTime: string;
-  endDateTime: string;
+  startDate: string;
+  endDate: string;
   reason?: string;
   createdAt: string;
 }

@@ -168,8 +168,8 @@ export class VenuesService {
 
     // Check blackouts
     const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDateTime);
-      const blackoutEnd = new Date(blackout.endDateTime);
+      const blackoutStart = new Date(blackout.startDate);
+      const blackoutEnd = new Date(blackout.endDate);
       return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
     });
 
@@ -270,7 +270,7 @@ export class VenuesService {
     return await this.availabilityRuleRepository.save(rule);
   }
 
-  async addBlackout(venueId: string, blackoutData: { startDateTime: string; endDateTime: string; reason: string }): Promise<any> {
+  async addBlackout(venueId: string, blackoutData: { startDate: string; endDate: string; reason: string }): Promise<any> {
     const venue = await this.venueRepository.findOne({ where: { id: venueId } });
     if (!venue) {
       throw new Error('Venue not found');
@@ -279,8 +279,8 @@ export class VenuesService {
     const blackout = this.blackoutRepository.create({
       venueId,
       venue,
-      startDateTime: new Date(blackoutData.startDateTime),
-      endDateTime: new Date(blackoutData.endDateTime),
+      startDate: new Date(blackoutData.startDate),
+      endDate: new Date(blackoutData.endDate),
       reason: blackoutData.reason,
     });
 
@@ -440,8 +440,8 @@ export class VenuesService {
       blackouts: venue.blackouts?.map(blackout => ({
         id: blackout.id,
         venueId: blackout.venueId,
-        startDateTime: blackout.startDateTime?.toISOString(),
-        endDateTime: blackout.endDateTime?.toISOString(),
+        startDate: blackout.startDate?.toISOString(),
+        endDate: blackout.endDate?.toISOString(),
         reason: blackout.reason,
         createdAt: blackout.createdAt?.toISOString(),
       })) || [],

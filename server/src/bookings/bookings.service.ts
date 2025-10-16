@@ -75,8 +75,8 @@ export class BookingsService {
 
     // Check blackouts
     const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDateTime);
-      const blackoutEnd = new Date(blackout.endDateTime);
+      const blackoutStart = new Date(blackout.startDate);
+      const blackoutEnd = new Date(blackout.endDate);
       return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
     });
 

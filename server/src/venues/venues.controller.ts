@@ -274,7 +274,7 @@ export class VenuesController {
   @UseGuards(JwtAuthGuard)
   async addBlackout(
     @Param('id') id: string,
-    @Body() blackoutData: { startDateTime: string; endDateTime: string; reason: string },
+    @Body() blackoutData: { startDate: string; endDate: string; reason: string },
     @CurrentUser() currentUser: CurrentUserData,
   ): Promise<ApiResponse<any>> {
     try {
