@@ -118,7 +118,7 @@ export class VenuesService {
 
     const venue = this.venueRepository.create({
       ...createVenueDto,
-      host,
+      host, // Set the host relation - TypeORM will handle the foreign key
       status: 'pending_approval', // Set to pending approval for review
     });
 
@@ -218,8 +218,8 @@ export class VenuesService {
     const image = this.venueImageRepository.create({
       venueId,
       venue,
-      url: imageURL,
-      order: 0, // You might want to calculate the next index
+      imageUrl: imageURL,
+      displayOrder: 0, // You might want to calculate the next index
     });
 
     return await this.venueImageRepository.save(image);
