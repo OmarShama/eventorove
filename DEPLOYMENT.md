@@ -1,6 +1,6 @@
-# MonoNestNext Production Deployment Guide
+# Eventorove Production Deployment Guide
 
-This guide explains how to deploy your MonoNestNext application to production using the dev environment configuration.
+This guide explains how to deploy your Eventorove application to production using the dev environment configuration.
 
 ## 🚀 Quick Start
 

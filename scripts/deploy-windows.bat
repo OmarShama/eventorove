@@ -1,8 +1,8 @@
 @echo off
-REM MonoNestNext Production Deployment Script for Windows
+REM Eventorove Production Deployment Script for Windows
 REM This script deploys the application using the dev environment configuration
 
-echo 🚀 Starting MonoNestNext Production Deployment...
+echo 🚀 Starting Eventorove Production Deployment...
 
 REM Check if Docker is running
 docker info >nul 2>&1

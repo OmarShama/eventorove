@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test your app locally before going live
-echo "🧪 Testing MonoNestNext locally..."
+echo "🧪 Testing Eventorove locally..."
 
 # Colors for output
 GREEN='\033[0;32m'

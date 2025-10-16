@@ -83,9 +83,15 @@ export class VenuesController {
     @CurrentUser() currentUser: CurrentUserData,
   ): Promise<ApiResponse<VenueWithDetailsDto>> {
     try {
+      console.log('Creating venue with user:', currentUser);
+
       // Check if user is host or admin
       if (currentUser.role !== 'host' && currentUser.role !== 'admin') {
         throw new Error('Only hosts and admins can create venues');
+      }
+
+      if (!currentUser.id) {
+        throw new Error('User ID is missing from authentication');
       }
 
       const venue = await this.venuesService.createVenue(createVenueDto, currentUser.id);
@@ -95,6 +101,7 @@ export class VenuesController {
         message: 'Venue created successfully',
       };
     } catch (error) {
+      console.error('Venue creation error:', error);
       throw new HttpException(
         {
           success: false,

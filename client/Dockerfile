@@ -8,14 +8,17 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY client/package*.json ./
+RUN npm install --production=false
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY client/ .
+
+# Ensure public directory exists
+RUN mkdir -p ./public
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
@@ -37,7 +40,8 @@ RUN adduser --system --uid 1001 nextjs
 
 # Create public directory and copy if it exists
 RUN mkdir -p ./public
-COPY --from=builder /app/public ./public
+# Copy public directory contents (will work even if empty)
+COPY --from=builder /app/public/ ./public/
 
 # Set the correct permission for prerender cache
 RUN mkdir .next

@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { config } from "@/lib/config";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ export default function Booking() {
   const { data: booking, isLoading, error } = useQuery<BookingWithDetails>({
     queryKey: ['/api/bookings', bookingId],
     queryFn: async () => {
-      const response = await fetch(`/api/bookings/${bookingId}`);
+      const response = await fetch(`${config.apiUrl}/bookings/${bookingId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch booking');
       }

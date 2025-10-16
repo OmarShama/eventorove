@@ -1,0 +1,13 @@
+{
+  "name": "eventorove-monorepo",
+  "version": "1.0.0",
+  "description": "Eventorove Monorepo - Use Docker for deployment",
+  "private": true,
+  "scripts": {
+    "build": "echo 'This is a monorepo. Use Docker for deployment.'",
+    "start": "echo 'This is a monorepo. Use Docker for deployment.'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

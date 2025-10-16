@@ -8,14 +8,14 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY server/package*.json ./
+RUN npm install --production=false
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY server/ .
 
 # Build the application
 RUN npm run build
@@ -33,10 +33,16 @@ RUN adduser --system --uid 1001 nestjs
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nestjs:nodejs /app/tsconfig.json ./tsconfig.json
 
 USER nestjs
 
 EXPOSE 3001
 
-# Start the application
-CMD ["npm", "run", "start:prod"]
+# Copy migration script and SQL file
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./src/migrations
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations/001-create-tables.sql ./src/migrations/001-create-tables.sql
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations/001-create-tables.sql ./dist/migrations/001-create-tables.sql
+
+# Start the application with migration
+CMD ["sh", "-c", "node dist/migrations/run-migrations.js && node dist/main.js"]

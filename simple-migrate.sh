@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔄 Simple Data Migration for MonoNestNext"
+echo "🔄 Simple Data Migration for Eventorove"
 echo "========================================="
 
 # Configuration
@@ -57,7 +57,7 @@ fi
 echo "🚀 Restoring data to Docker database..."
 
 # Copy backup to Docker container
-docker cp ./backups/migration_backup.sql mononestnext_db:/tmp/migration_backup.sql
+docker cp ./backups/migration_backup.sql eventorove_db:/tmp/migration_backup.sql
 
 # Restore the backup
 docker-compose exec -T db psql -U postgres -d stagea -f /tmp/migration_backup.sql

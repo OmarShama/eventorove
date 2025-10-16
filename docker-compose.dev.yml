@@ -4,14 +4,14 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: mononestnext_server_dev
+    container_name: eventorove_server_dev
     restart: unless-stopped
     env_file:
       - ./server/env.dev
     ports:
       - "3001:3001"
     networks:
-      - mononestnext_network
+      - eventorove_network
     volumes:
       - ./server/uploads:/app/uploads
 
@@ -20,7 +20,7 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-    container_name: mononestnext_client_dev
+    container_name: eventorove_client_dev
     restart: unless-stopped
     env_file:
       - ./client/env.dev
@@ -29,10 +29,10 @@ services:
     depends_on:
       - server
     networks:
-      - mononestnext_network
+      - eventorove_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 networks:
-  mononestnext_network:
+  eventorove_network:
     driver: bridge

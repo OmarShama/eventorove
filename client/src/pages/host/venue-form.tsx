@@ -174,23 +174,23 @@ export default function VenueForm() {
 
   const createVenueMutation = useMutation({
     mutationFn: async (data: VenueFormData) => {
-      return postWithAuth('/api/venues', data);
+      return postWithAuth('/venues', data);
     },
     onSuccess: async (newVenue) => {
       try {
         // Add amenities using auth utilities
         for (const amenity of amenities) {
-          await postWithAuth(`/api/venues/${newVenue.id}/amenities`, { name: amenity });
+          await postWithAuth(`/venues/${newVenue.id}/amenities`, { name: amenity });
         }
 
         // Add availability rules
         for (const rule of availabilityRules) {
-          await postWithAuth(`/api/venues/${newVenue.id}/availability-rules`, rule);
+          await postWithAuth(`/venues/${newVenue.id}/availability-rules`, rule);
         }
 
         // Add blackouts
         for (const blackout of blackouts) {
-          await postWithAuth(`/api/venues/${newVenue.id}/blackouts`, blackout);
+          await postWithAuth(`/venues/${newVenue.id}/blackouts`, blackout);
         }
 
         queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
@@ -239,12 +239,12 @@ export default function VenueForm() {
         // Update availability rules
         if (params.id) {
           for (const rule of availabilityRules) {
-            await postWithAuth(`/api/venues/${params.id}/availability-rules`, rule);
+            await postWithAuth(`/venues/${params.id}/availability-rules`, rule);
           }
 
           // Update blackouts
           for (const blackout of blackouts) {
-            await postWithAuth(`/api/venues/${params.id}/blackouts`, blackout);
+            await postWithAuth(`/venues/${params.id}/blackouts`, blackout);
           }
         }
 

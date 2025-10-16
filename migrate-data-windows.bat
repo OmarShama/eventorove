@@ -1,5 +1,5 @@
 @echo off
-echo 🔄 Data Migration Script for MonoNestNext (Windows)
+echo 🔄 Data Migration Script for Eventorove (Windows)
 echo ==================================================
 
 REM Configuration
@@ -24,7 +24,7 @@ echo.
 
 REM Check if Docker containers are running
 echo 🔍 Checking Docker containers...
-docker-compose ps | findstr "mononestnext_db.*Up" >nul
+docker-compose ps | findstr "eventorove_db.*Up" >nul
 if %errorlevel% neq 0 (
     echo ❌ Docker database container is not running
     echo    Please run: docker-compose up -d db

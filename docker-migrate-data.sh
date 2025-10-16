@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🐳 Docker-based Data Migration for MonoNestNext"
+echo "🐳 Docker-based Data Migration for Eventorove"
 echo "=============================================="
 
 # Configuration
@@ -11,7 +11,7 @@ LOCAL_DB_USER="postgres"
 LOCAL_DB_PASS="postgres"
 LOCAL_DB_SCHEMA="stagea_local"
 
-DOCKER_DB_HOST="mononestnext_db"
+DOCKER_DB_HOST="eventorove_db"
 DOCKER_DB_PORT="5432"
 DOCKER_DB_NAME="stagea"
 DOCKER_DB_USER="postgres"
@@ -103,8 +103,8 @@ restore_to_docker() {
     
     # Copy backup files to Docker container
     echo "📋 Copying backup files to Docker container..."
-    docker cp ./backups/schema_backup.sql mononestnext_db:/tmp/schema_backup.sql
-    docker cp ./backups/data_backup.sql mononestnext_db:/tmp/data_backup.sql
+    docker cp ./backups/schema_backup.sql eventorove_db:/tmp/schema_backup.sql
+    docker cp ./backups/data_backup.sql eventorove_db:/tmp/data_backup.sql
     
     # Restore schema
     echo "📋 Restoring schema..."

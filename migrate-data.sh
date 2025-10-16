@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔄 Data Migration Script for MonoNestNext"
+echo "🔄 Data Migration Script for Eventorove"
 echo "=========================================="
 
 # Configuration
@@ -26,7 +26,7 @@ echo ""
 # Function to check if Docker containers are running
 check_docker_containers() {
     echo "🔍 Checking Docker containers..."
-    if ! docker-compose ps | grep -q "mononestnext_db.*Up"; then
+    if ! docker-compose ps | grep -q "eventorove_db.*Up"; then
         echo "❌ Docker database container is not running"
         echo "   Please run: docker-compose up -d db"
         exit 1

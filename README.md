@@ -1,4 +1,4 @@
-# MonoNestNext
+# Eventorove
 
 A monorepo with NestJS backend and Next.js frontend.
 

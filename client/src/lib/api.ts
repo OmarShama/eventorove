@@ -6,7 +6,9 @@ export class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || `${config.apiUrl}/api`;
+    // If baseUrl is provided, use it as-is
+    // If not, use config.apiUrl (which already includes /api from environment variable)
+    this.baseUrl = baseUrl || config.apiUrl;
   }
 
   async get<T>(endpoint: string): Promise<T> {

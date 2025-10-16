@@ -1,6 +1,6 @@
-# Docker Setup for MonoNestNext
+# Docker Setup for Eventorove
 
-This document provides instructions for running the MonoNestNext application using Docker.
+This document provides instructions for running the Eventorove application using Docker.
 
 ## Prerequisites
 

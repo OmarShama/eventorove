@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { config } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,7 +50,7 @@ export default function Search() {
         }
       });
 
-      const response = await fetch(`/api/venues/search?${params}`);
+      const response = await fetch(`${config.apiUrl}/venues/search?${params}`);
       if (!response.ok) {
         throw new Error('Failed to search venues');
       }

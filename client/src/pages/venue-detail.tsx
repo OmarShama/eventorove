@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { VenueWithDetails } from "@/types/api";
+import { config } from "@/lib/config";
 
 export default function VenueDetail() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function VenueDetail() {
   const { data: venue, isLoading, error } = useQuery<VenueWithDetails>({
     queryKey: ['/api/venues', venueId],
     queryFn: async () => {
-      const response = await fetch(`/api/venues/${venueId}`);
+      const response = await fetch(`${config.apiUrl}/venues/${venueId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch venue');
       }
@@ -46,7 +47,7 @@ export default function VenueDetail() {
         durationMinutes: durationMinutes.toString(),
       });
 
-      const response = await fetch(`/api/venues/${venueId}/availability?${params}`);
+      const response = await fetch(`${config.apiUrl}/venues/${venueId}/availability?${params}`);
       if (!response.ok) {
         throw new Error('Failed to check availability');
       }
@@ -61,7 +62,7 @@ export default function VenueDetail() {
         throw new Error('Missing booking information');
       }
 
-      const response = await fetch('/api/bookings', {
+      const response = await fetch(`${config.apiUrl}/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
