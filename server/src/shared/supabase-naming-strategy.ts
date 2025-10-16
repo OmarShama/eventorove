@@ -5,8 +5,11 @@ export class SupabaseNamingStrategy extends DefaultNamingStrategy implements Nam
     columnName(propertyName: string, customName: string, embeddedPrefixes: string[]): string {
         if (customName) return customName;
 
-        // Convert camelCase to snake_case
-        return propertyName.replace(/([A-Z])/g, '_$1').toLowerCase();
+        // Convert camelCase to snake_case, handling consecutive capitals properly
+        return propertyName
+            .replace(/([a-z])([A-Z])/g, '$1_$2')  // Handle normal camelCase
+            .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')  // Handle consecutive capitals like EGP
+            .toLowerCase();
     }
 
     // Convert camelCase to snake_case for table names
@@ -32,6 +35,9 @@ export class SupabaseNamingStrategy extends DefaultNamingStrategy implements Nam
     }
 
     private camelToSnake(str: string): string {
-        return str.replace(/([A-Z])/g, '_$1').toLowerCase();
+        return str
+            .replace(/([a-z])([A-Z])/g, '$1_$2')  // Handle normal camelCase
+            .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')  // Handle consecutive capitals like EGP
+            .toLowerCase();
     }
 }

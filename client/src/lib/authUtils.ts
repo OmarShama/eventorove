@@ -3,7 +3,17 @@ import { config } from './config';
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   // Ensure URL is absolute by prepending config.apiUrl if it's relative
-  const fullUrl = url.startsWith('http') ? url : `${config.apiUrl}${url}`;
+  // If url already starts with /api, just prepend the base URL without /api
+  let fullUrl;
+  if (url.startsWith('http')) {
+    fullUrl = url;
+  } else if (url.startsWith('/api')) {
+    // Remove /api from config.apiUrl and add the full url
+    const baseUrl = config.apiUrl.replace('/api', '');
+    fullUrl = `${baseUrl}${url}`;
+  } else {
+    fullUrl = `${config.apiUrl}${url}`;
+  }
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const headers: Record<string, string> = {
