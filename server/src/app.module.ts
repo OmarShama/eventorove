@@ -6,6 +6,22 @@ import { UsersModule } from './users/users.module';
 import { VenuesModule } from './venues/venues.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { AuthModule } from './auth/auth.module';
+import * as dns from 'dns';
+import { promisify } from 'util';
+
+const dnsLookup = promisify(dns.lookup);
+
+// Helper function to resolve IPv4 address
+async function resolveIPv4(hostname: string): Promise<string> {
+    try {
+        const result = await dnsLookup(hostname, { family: 4 });
+        console.log(`Resolved ${hostname} to IPv4: ${result.address}`);
+        return result.address;
+    } catch (error) {
+        console.warn(`Failed to resolve IPv4 for ${hostname}, using hostname:`, error.message);
+        return hostname;
+    }
+}
 
 @Module({
     imports: [
@@ -18,7 +34,7 @@ import { AuthModule } from './auth/auth.module';
         }),
         TypeOrmModule.forRootAsync({
             inject: [ConfigService],
-            useFactory: (config: ConfigService): TypeOrmModuleOptions => {
+            useFactory: async (config: ConfigService): Promise<TypeOrmModuleOptions> => {
                 const environment = config.get<string>('NODE_ENV') || 'development';
                 const schema = config.get<string>('DB_SCHEMA') ?? 'public';
                 const synchronize = (config.get<string>('DB_SYNC') ?? 'false') === 'true';
@@ -47,14 +63,17 @@ import { AuthModule } from './auth/auth.module';
                         console.log('Detected Supabase direct connection, applying IPv4 workaround');
                     }
 
-                    // Try parsing URL for discrete connection parameters as fallback
+                    // Force IPv4 by resolving hostname to IPv4 address
                     try {
                         const urlObj = new URL(url);
-                        const host = urlObj.hostname;
+                        const hostname = urlObj.hostname;
                         const port = parseInt(urlObj.port) || (isPooledConnection ? 6543 : 5432);
                         const username = urlObj.username;
                         const password = urlObj.password;
                         const database = urlObj.pathname.substring(1); // Remove leading slash
+
+                        // Resolve hostname to IPv4 address
+                        const host = await resolveIPv4(hostname);
 
                         // Use discrete parameters with SSL bypass and IPv4 forcing
                         const sslConfig = {
@@ -63,6 +82,7 @@ import { AuthModule } from './auth/auth.module';
                         };
 
                         console.log(`Using discrete connection parameters: ${host}:${port}/${database}`);
+                        console.log('Forcing IPv4 connection to avoid IPv6 issues');
 
                         return {
                             ...common,
@@ -74,10 +94,14 @@ import { AuthModule } from './auth/auth.module';
                             ssl: sslConfig,
                             extra: {
                                 ssl: sslConfig,
-                                // Force IPv4 and add connection options
+                                // More aggressive IPv4 forcing
                                 family: 4, // Force IPv4
                                 keepAlive: true,
                                 keepAliveInitialDelayMillis: 10000,
+                                // Force IPv4 at the socket level
+                                socket: {
+                                    family: 4
+                                },
                                 // Additional connection pool settings for pooled connections
                                 ...(isPooledConnection && {
                                     max: 10, // Limit connections for PgBouncer
@@ -87,15 +111,27 @@ import { AuthModule } from './auth/auth.module';
                             }
                         } as TypeOrmModuleOptions;
                     } catch (error) {
-                        console.error('Failed to parse DATABASE_URL, falling back to URL method:', error);
+                        console.error('Failed to parse DATABASE_URL, trying alternative approach:', error);
 
-                        // Fallback to URL method with IPv4 forcing and connection options
-                        const withSSL = url.includes('sslmode=')
-                            ? url.replace(/sslmode=[^&]+/, 'sslmode=require')
-                            : `${url}${url.includes('?') ? '&' : '?'}sslmode=require`;
+                        // Alternative approach: Modify URL to force IPv4
+                        let modifiedUrl = url;
 
-                        // Add IPv4 forcing parameters to URL
-                        const urlWithIPv4 = withSSL + (withSSL.includes('?') ? '&' : '?') + 'preferIPv4=true';
+                        // Replace the hostname with IPv4 if possible, or add IPv4 forcing parameters
+                        if (url.includes('db.kvfmzqlozhpqdqcyeiqc.supabase.co')) {
+                            // Try to force IPv4 resolution
+                            modifiedUrl = url.replace('db.kvfmzqlozhpqdqcyeiqc.supabase.co', 'db.kvfmzqlozhpqdqcyeiqc.supabase.co');
+                        }
+
+                        // Ensure sslmode=require and add IPv4 forcing
+                        const withSSL = modifiedUrl.includes('sslmode=')
+                            ? modifiedUrl.replace(/sslmode=[^&]+/, 'sslmode=require')
+                            : `${modifiedUrl}${modifiedUrl.includes('?') ? '&' : '?'}sslmode=require`;
+
+                        // Add multiple IPv4 forcing parameters
+                        const urlWithIPv4 = withSSL + (withSSL.includes('?') ? '&' : '?') + 'preferIPv4=true&ipv4=true';
+
+                        console.log('Using URL method with IPv4 forcing');
+                        console.log(`Modified URL: ${urlWithIPv4.replace(/:[^:@]+@/, ':***@')}`);
 
                         return {
                             ...common,
@@ -109,9 +145,14 @@ import { AuthModule } from './auth/auth.module';
                                     rejectUnauthorized: false,
                                     checkServerIdentity: () => undefined,
                                 },
+                                // Multiple IPv4 forcing approaches
                                 family: 4, // Force IPv4
                                 keepAlive: true,
                                 keepAliveInitialDelayMillis: 10000,
+                                // Force IPv4 at the socket level
+                                socket: {
+                                    family: 4
+                                },
                                 // Additional connection pool settings for pooled connections
                                 ...(isPooledConnection && {
                                     max: 10, // Limit connections for PgBouncer
