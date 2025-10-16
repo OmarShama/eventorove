@@ -49,7 +49,31 @@ async function runMigrations() {
             // Read and execute the SQL migration file
             const fs = require('fs');
             const path = require('path');
-            const sqlFile = fs.readFileSync(path.join(__dirname, '001-create-tables.sql'), 'utf8');
+
+            // Try multiple possible locations for the SQL file
+            const possiblePaths = [
+                path.join(__dirname, '001-create-tables.sql'),
+                path.join(__dirname, '../migrations/001-create-tables.sql'),
+                path.join(process.cwd(), 'src/migrations/001-create-tables.sql'),
+                path.join(process.cwd(), 'dist/migrations/001-create-tables.sql'),
+                '/app/src/migrations/001-create-tables.sql',
+                '/app/dist/migrations/001-create-tables.sql'
+            ];
+
+            let sqlFile = null;
+            for (const sqlPath of possiblePaths) {
+                try {
+                    sqlFile = fs.readFileSync(sqlPath, 'utf8');
+                    console.log(`Found SQL file at: ${sqlPath}`);
+                    break;
+                } catch (err) {
+                    // Continue to next path
+                }
+            }
+
+            if (!sqlFile) {
+                throw new Error('Could not find 001-create-tables.sql file. Tried paths: ' + possiblePaths.join(', '));
+            }
 
             // Split by semicolon and execute each statement
             const statements = sqlFile.split(';').filter(stmt => stmt.trim());

@@ -41,6 +41,8 @@ EXPOSE 3001
 
 # Copy migration script and SQL file
 COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./src/migrations
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations/001-create-tables.sql ./src/migrations/001-create-tables.sql
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations/001-create-tables.sql ./dist/migrations/001-create-tables.sql
 
 # Start the application with migration
 CMD ["sh", "-c", "node dist/migrations/run-migrations.js && node dist/main.js"]
