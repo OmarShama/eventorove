@@ -33,6 +33,7 @@ RUN adduser --system --uid 1001 nestjs
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nestjs:nodejs /app/tsconfig.json ./tsconfig.json
 
 USER nestjs
 
@@ -42,4 +43,4 @@ EXPOSE 3001
 COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./src/migrations
 
 # Start the application with migration
-CMD ["sh", "-c", "npm run build && node dist/migrations/run-migrations.js && npm run start:prod"]
+CMD ["sh", "-c", "node dist/migrations/run-migrations.js && node dist/main.js"]

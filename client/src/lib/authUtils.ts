@@ -1,6 +1,9 @@
 // Utility functions for authenticated API calls
+import { config } from './config';
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  // Ensure URL is absolute by prepending config.apiUrl if it's relative
+  const fullUrl = url.startsWith('http') ? url : `${config.apiUrl}${url}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const headers: Record<string, string> = {
@@ -15,7 +18,7 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
     credentials: 'include',
