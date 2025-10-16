@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import { SupabaseNamingStrategy } from './shared/supabase-naming-strategy';
 import { UsersModule } from './users/users.module';
 import { VenuesModule } from './venues/venues.module';
 import { BookingsModule } from './bookings/bookings.module';
@@ -46,7 +46,7 @@ async function resolveIPv4(hostname: string): Promise<string> {
                     schema,
                     autoLoadEntities: true,
                     synchronize,
-                    namingStrategy: new SnakeNamingStrategy(),
+                    namingStrategy: new SupabaseNamingStrategy(),
                 };
 
                 // For dev environment (Supabase), use DATABASE_URL
