@@ -148,8 +148,8 @@ export class VenuesService {
     // Check availability rules
     const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
     if (dayRule) {
-      const [openHour, openMinute] = dayRule.openTime.split(':').map(Number);
-      const [closeHour, closeMinute] = dayRule.closeTime.split(':').map(Number);
+      const [openHour, openMinute] = dayRule.startTime.split(':').map(Number);
+      const [closeHour, closeMinute] = dayRule.endTime.split(':').map(Number);
 
       const openTime = new Date(startDateTime);
       openTime.setHours(openHour, openMinute, 0, 0);
@@ -160,7 +160,7 @@ export class VenuesService {
       if (startDateTime < openTime || endDateTime > closeTime) {
         return {
           available: false,
-          conflicts: [`Venue is only available from ${dayRule.openTime} to ${dayRule.closeTime} on ${this.getDayName(dayOfWeek)}`],
+          conflicts: [`Venue is only available from ${dayRule.startTime} to ${dayRule.endTime} on ${this.getDayName(dayOfWeek)}`],
           suggestedTimes: [],
         };
       }
@@ -255,7 +255,7 @@ export class VenuesService {
     return await this.venuePackageRepository.save(venuePackage);
   }
 
-  async addAvailabilityRule(venueId: string, ruleData: { dayOfWeek: number; openTime: string; closeTime: string }): Promise<any> {
+  async addAvailabilityRule(venueId: string, ruleData: { dayOfWeek: number; startTime: string; endTime: string }): Promise<any> {
     const venue = await this.venueRepository.findOne({ where: { id: venueId } });
     if (!venue) {
       throw new Error('Venue not found');
@@ -433,8 +433,8 @@ export class VenuesService {
         id: rule.id,
         venueId: rule.venueId,
         dayOfWeek: rule.dayOfWeek,
-        openTime: rule.openTime,
-        closeTime: rule.closeTime,
+        startTime: rule.startTime,
+        endTime: rule.endTime,
         createdAt: rule.createdAt?.toISOString(),
       })) || [],
       blackouts: venue.blackouts?.map(blackout => ({

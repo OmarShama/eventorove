@@ -249,7 +249,7 @@ export class VenuesController {
   @UseGuards(JwtAuthGuard)
   async addAvailabilityRule(
     @Param('id') id: string,
-    @Body() ruleData: { dayOfWeek: number; openTime: string; closeTime: string },
+    @Body() ruleData: { dayOfWeek: number; startTime: string; endTime: string },
     @CurrentUser() currentUser: CurrentUserData,
   ): Promise<ApiResponse<any>> {
     try {
