@@ -3,7 +3,7 @@
 # DigitalOcean Ubuntu Server Setup Script
 # Run this on your new server
 
-echo "🚀 Setting up your server for MonoNestNext..."
+echo "🚀 Setting up your server for Eventorove..."
 
 # Update system
 sudo apt update && sudo apt upgrade -y
@@ -21,8 +21,8 @@ sudo chmod +x /usr/local/bin/docker-compose
 sudo apt install -y git curl wget nano htop
 
 # Create app directory
-mkdir -p ~/mononestnext
-cd ~/mononestnext
+mkdir -p ~/eventorove
+cd ~/eventorove
 
 echo "✅ Server setup complete!"
 echo "Next steps:"

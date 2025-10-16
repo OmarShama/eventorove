@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🐳 Testing Docker setup for MonoNestNext..."
+echo "🐳 Testing Docker setup for Eventorove..."
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then

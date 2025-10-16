@@ -3,7 +3,7 @@ services:
   # PostgreSQL Database
   db:
     image: postgres:16-alpine
-    container_name: mononestnext_db
+    container_name: eventorove_db
     restart: unless-stopped
     environment:
       POSTGRES_DB: eventorove
@@ -15,14 +15,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
-      - mononestnext_network
+      - eventorove_network
 
   # NestJS Server
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: mononestnext_server
+    container_name: eventorove_server
     restart: unless-stopped
     env_file:
       - ./server/env.docker
@@ -31,7 +31,7 @@ services:
     depends_on:
       - db
     networks:
-      - mononestnext_network
+      - eventorove_network
     volumes:
       - ./server/uploads:/app/uploads
 
@@ -40,7 +40,7 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-    container_name: mononestnext_client
+    container_name: eventorove_client
     restart: unless-stopped
     env_file:
       - ./client/env.docker
@@ -49,7 +49,7 @@ services:
     depends_on:
       - server
     networks:
-      - mononestnext_network
+      - eventorove_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -57,5 +57,5 @@ volumes:
   postgres_data:
 
 networks:
-  mononestnext_network:
+  eventorove_network:
     driver: bridge

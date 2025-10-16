@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { VenuesModule } from './venues/venues.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { AuthModule } from './auth/auth.module';
+import { HealthModule } from './health/health.module';
 import * as dns from 'dns';
 import { promisify } from 'util';
 
@@ -179,6 +180,7 @@ async function resolveIPv4(hostname: string): Promise<string> {
         VenuesModule,
         BookingsModule,
         AuthModule,
+        HealthModule,
     ],
 })
 export class AppModule { }
