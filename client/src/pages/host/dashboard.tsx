@@ -31,27 +31,27 @@ export default function HostDashboard() {
   // Fetch all venues
   const { data: allVenues, isLoading: venuesLoading } = useQuery<Venue[]>({
     queryKey: ['/api/host/venues'],
-    queryFn: () => getWithAuth('/api/host/venues'),
+    queryFn: () => getWithAuth('/host/venues'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
   // Fetch pending venues
   const { data: pendingVenues } = useQuery<Venue[]>({
     queryKey: ['/api/host/venues', 'pending_approval'],
-    queryFn: () => getWithAuth('/api/host/venues?status=pending_approval'),
+    queryFn: () => getWithAuth('/host/venues?status=pending_approval'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
   // Fetch approved venues
   const { data: approvedVenues } = useQuery<Venue[]>({
     queryKey: ['/api/host/venues', 'approved'],
-    queryFn: () => getWithAuth('/api/host/venues?status=approved'),
+    queryFn: () => getWithAuth('/host/venues?status=approved'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ['/api/host/bookings'],
-    queryFn: () => getWithAuth('/api/host/bookings'),
+    queryFn: () => getWithAuth('/host/bookings'),
     enabled: isAuthenticated && (user?.role === 'host' || user?.role === 'admin'),
   });
 
