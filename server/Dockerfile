@@ -39,7 +39,7 @@ USER nestjs
 
 EXPOSE 3001
 
-# Copy migration script
+# Copy migration script and SQL file
 COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./src/migrations
 
 # Start the application with migration
