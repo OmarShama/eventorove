@@ -38,10 +38,31 @@ import { AuthModule } from './auth/auth.module';
                         ? url
                         : `${url}${url.includes('?') ? '&' : '?'}sslmode=require`;
 
+                    // Check if using pooled connection (port 6543) vs direct connection (port 5432)
+                    const isPooledConnection = url.includes(':6543/');
+
+                    const sslConfig = isPooledConnection
+                        ? {
+                            rejectUnauthorized: false,
+                            checkServerIdentity: () => undefined
+                        }
+                        : {
+                            rejectUnauthorized: false
+                        };
+
                     return {
                         ...common,
                         url: withSSL,
-                        ssl: { rejectUnauthorized: false },
+                        ssl: sslConfig,
+                        extra: {
+                            ssl: sslConfig,
+                            // Additional connection pool settings for pooled connections
+                            ...(isPooledConnection && {
+                                max: 10, // Limit connections for PgBouncer
+                                idleTimeoutMillis: 30000,
+                                connectionTimeoutMillis: 2000,
+                            })
+                        }
                     } as TypeOrmModuleOptions;
                 }
 

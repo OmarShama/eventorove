@@ -11,6 +11,28 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 
 ## 🚀 Correct Deployment Steps
 
+### Step 0: Set Up Database First
+
+You have several options for a free database:
+
+#### Option A: Railway PostgreSQL (Recommended)
+1. **Go to [railway.app](https://railway.app)**
+2. **Click "New Project" → "Provision PostgreSQL"**
+3. **Wait for database to be created**
+4. **Copy the connection details** (you'll need these for the server)
+
+#### Option B: Supabase (Free tier)
+1. **Go to [supabase.com](https://supabase.com)**
+2. **Create a new project**
+3. **Go to Settings → Database**
+4. **Copy the connection string** (starts with `postgresql://`)
+
+#### Option C: Neon (Free tier)
+1. **Go to [neon.tech](https://neon.tech)**
+2. **Create a free account**
+3. **Create a new database**
+4. **Copy the connection string**
+
 ### Step 1: Deploy Backend (Server) First
 
 1. **Go to [railway.app](https://railway.app)**
@@ -25,15 +47,17 @@ The Nixpacks build failed because Railway was trying to build the entire monorep
 6. **Add Environment Variables**:
    ```
    NODE_ENV=production
-   DATABASE_URL=your-supabase-url-here
+   DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres?sslmode=require
    DB_SCHEMA=eventorove_dev
    DB_SYNC=false
-   JWT_SECRET=your-super-secret-jwt-key-here
+   JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-random
    PORT=3001
    HOST=0.0.0.0
    CORS_ORIGIN=https://eventorove-fe.railway.app
    NEXT_PUBLIC_API_URL=https://eventorove-be.railway.app/api
    ```
+
+   **IMPORTANT**: You need to set up a database first! See the "Database Setup" section below.
 7. **Click "Deploy"**
 8. **Wait for deployment** (5-10 minutes)
 9. **Copy the generated URL** (e.g., `https://eventorove-be.railway.app`)
@@ -110,6 +134,22 @@ The executable `cd` could not be found.
 ```
 
 **Solution**: The railway.json files have been updated to remove the `startCommand` since Docker containers use the CMD from the Dockerfile directly.
+
+### If Database Connection Fails
+
+If you see errors like:
+```
+Unable to connect to the database. Retrying (1)...
+Error: connect ENETUNREACH [IPv6-address]:5432
+```
+
+**Solutions**:
+1. **Make sure you have a real database set up** (see Step 0 above)
+2. **Check your DATABASE_URL format**:
+   - Should be: `postgresql://username:password@host:port/database?sslmode=require`
+   - Example: `postgresql://postgres:password123@db.railway.internal:5432/railway?sslmode=require`
+3. **Verify the database is accessible** from Railway's network
+4. **Check if you need to whitelist Railway's IPs** (some providers require this)
 
 ### If Build Still Fails
 
