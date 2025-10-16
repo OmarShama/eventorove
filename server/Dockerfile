@@ -38,5 +38,8 @@ USER nestjs
 
 EXPOSE 3001
 
-# Start the application
-CMD ["npm", "run", "start:prod"]
+# Copy migration script
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./src/migrations
+
+# Start the application with migration
+CMD ["sh", "-c", "npm run build && node dist/migrations/run-migrations.js && npm run start:prod"]

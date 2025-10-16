@@ -9,7 +9,9 @@ async function bootstrap() {
 
     // Configure CORS
     const allowedOrigins = process.env.NODE_ENV === 'production'
-        ? ['https://your-frontend-domain.com']
+        ? [
+            'https://eventorove-production-524a.up.railway.app'  // Railway frontend
+        ]
         : [
             'http://localhost:3000',  // Docker client
             'http://localhost:3001',  // Docker client

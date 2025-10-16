@@ -21,7 +21,7 @@ const getApiUrl = () => {
         // Local development
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             console.log('Using localhost fallback for development');
-            return 'http://localhost:3000/api';
+            return 'http://localhost:3001/api';
         }
 
         // Production fallback - use Railway server URL
