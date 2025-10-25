@@ -70,3 +70,7 @@ nul
 # Local SSL certificates (self-signed)
 nginx/ssl/cert.pem
 nginx/ssl/key.pem
+
+# Next.js build output
+.next/
+out/
