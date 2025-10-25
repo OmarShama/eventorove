@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
+import { Repository, MoreThanOrEqual, DataSource } from 'typeorm';
 import { Venue } from './venue.entity';
 import { VenueImage } from './venue-image.entity';
 import { VenueAmenity } from './venue-amenity.entity';
@@ -39,6 +39,7 @@ export class VenuesService {
     private userRepository: Repository<User>,
     @InjectRepository(Booking)
     private bookingRepository: Repository<Booking>,
+    private dataSource: DataSource,
   ) { }
 
   async searchVenues(filters: VenueSearchRequest): Promise<VenueSearchResponse> {
@@ -110,25 +111,99 @@ export class VenuesService {
   }
 
   async createVenue(createVenueDto: CreateVenueRequest, hostId: string): Promise<VenueWithDetailsDto> {
-    // Get host user from authenticated user ID
-    const host = await this.userRepository.findOne({ where: { id: hostId } });
-    if (!host) {
-      throw new Error('User not found');
-    }
+    // Use database transaction to ensure data consistency
+    return await this.dataSource.transaction(async (manager) => {
+      // Get host user from authenticated user ID
+      const host = await manager.findOne(User, { where: { id: hostId } });
+      if (!host) {
+        throw new Error('User not found');
+      }
 
-    const venue = this.venueRepository.create({
-      ...createVenueDto,
-      host, // Set the host relation - TypeORM will handle the foreign key
-      status: 'pending_approval', // Set to pending approval for review
+      // Extract the main venue data and related data
+      const { images, amenities, packages, availabilityRules, blackouts, ...venueData } = createVenueDto;
+
+      const venue = manager.create(Venue, {
+        ...venueData,
+        host, // Set the host relation - TypeORM will handle the foreign key
+        status: 'pending_approval', // Set to pending approval for review
+      });
+
+      const savedVenue = await manager.save(Venue, venue);
+
+      // Create related entities if provided
+      if (images && images.length > 0) {
+        const venueImages = images.map(img => manager.create(VenueImage, {
+          venue: savedVenue,
+          imageUrl: img.imageUrl,
+          altText: img.altText,
+          displayOrder: img.displayOrder || 0,
+          isMain: img.isMain || false,
+        }));
+        await manager.save(VenueImage, venueImages);
+      }
+
+      if (amenities && amenities.length > 0) {
+        const venueAmenities = amenities.map(amenity => manager.create(VenueAmenity, {
+          venue: savedVenue,
+          name: amenity.name,
+        }));
+        await manager.save(VenueAmenity, venueAmenities);
+      }
+
+      if (packages && packages.length > 0) {
+        const venuePackages = packages.map(pkg => manager.create(VenuePackage, {
+          venue: savedVenue,
+          name: pkg.name,
+          description: pkg.description,
+          priceEGP: pkg.priceEGP,
+          durationMinutes: pkg.durationMinutes,
+          maxGuests: pkg.maxGuests,
+          isActive: pkg.isActive !== undefined ? pkg.isActive : true,
+        }));
+        await manager.save(VenuePackage, venuePackages);
+      }
+
+      if (availabilityRules && availabilityRules.length > 0) {
+        const venueAvailabilityRules = availabilityRules.map(rule => manager.create(AvailabilityRule, {
+          venue: savedVenue,
+          dayOfWeek: rule.dayOfWeek,
+          startTime: rule.openTime, // Map openTime to startTime
+          endTime: rule.closeTime, // Map closeTime to endTime
+          isAvailable: rule.isAvailable !== undefined ? rule.isAvailable : true,
+        }));
+        await manager.save(AvailabilityRule, venueAvailabilityRules);
+      }
+
+      if (blackouts && blackouts.length > 0) {
+        const venueBlackouts = blackouts.map(blackout => manager.create(Blackout, {
+          venue: savedVenue,
+          dayOfWeek: blackout.dayOfWeek,
+          startTime: blackout.startTime,
+          endTime: blackout.endTime,
+          reason: blackout.reason,
+        }));
+        await manager.save(Blackout, venueBlackouts);
+      }
+
+      // Return the created venue with all relations
+      return await this.getVenueById(savedVenue.id);
     });
-
-    const savedVenue = await this.venueRepository.save(venue);
-    return this.getVenueById(savedVenue.id);
   }
 
   async updateVenue(id: string, updateVenueDto: UpdateVenueRequest): Promise<VenueWithDetailsDto> {
-    await this.venueRepository.update(id, updateVenueDto);
-    return this.getVenueById(id);
+    return await this.dataSource.transaction(async (manager) => {
+      // Check if venue exists
+      const existingVenue = await manager.findOne(Venue, { where: { id } });
+      if (!existingVenue) {
+        throw new Error('Venue not found');
+      }
+
+      // Update venue data
+      await manager.update(Venue, id, updateVenueDto);
+
+      // Return updated venue
+      return await this.getVenueById(id);
+    });
   }
 
   async checkAvailability(id: string, query: AvailabilityCheckRequest): Promise<AvailabilityCheckResponse> {
@@ -168,9 +243,17 @@ export class VenuesService {
 
     // Check blackouts
     const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDate);
-      const blackoutEnd = new Date(blackout.endDate);
-      return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
+      const requestDayOfWeek = startDateTime.getDay();
+      const requestStartTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
+      const requestEndTime = endDateTime.toTimeString().slice(0, 5); // HH:MM format
+
+      // Check if the request is on the same day of week as the blackout
+      if (requestDayOfWeek !== blackout.dayOfWeek) {
+        return false;
+      }
+
+      // Check if the time ranges overlap
+      return (requestStartTime < blackout.endTime && requestEndTime > blackout.startTime);
     });
 
     if (conflictingBlackout) {
@@ -270,7 +353,7 @@ export class VenuesService {
     return await this.availabilityRuleRepository.save(rule);
   }
 
-  async addBlackout(venueId: string, blackoutData: { startDate: string; endDate: string; reason: string }): Promise<any> {
+  async addBlackout(venueId: string, blackoutData: { dayOfWeek: number; startTime: string; endTime: string; reason: string }): Promise<any> {
     const venue = await this.venueRepository.findOne({ where: { id: venueId } });
     if (!venue) {
       throw new Error('Venue not found');
@@ -279,8 +362,9 @@ export class VenuesService {
     const blackout = this.blackoutRepository.create({
       venueId,
       venue,
-      startDate: new Date(blackoutData.startDate),
-      endDate: new Date(blackoutData.endDate),
+      dayOfWeek: blackoutData.dayOfWeek,
+      startTime: blackoutData.startTime,
+      endTime: blackoutData.endTime,
       reason: blackoutData.reason,
     });
 
@@ -440,8 +524,9 @@ export class VenuesService {
       blackouts: venue.blackouts?.map(blackout => ({
         id: blackout.id,
         venueId: blackout.venueId,
-        startDate: blackout.startDate?.toISOString(),
-        endDate: blackout.endDate?.toISOString(),
+        dayOfWeek: blackout.dayOfWeek,
+        startTime: blackout.startTime,
+        endTime: blackout.endTime,
         reason: blackout.reason,
         createdAt: blackout.createdAt?.toISOString(),
       })) || [],

@@ -3,9 +3,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import 'dotenv/config';
 import * as session from 'express-session';
+import * as express from 'express';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+        bodyParser: false, // Disable default body parser to configure manually
+    });
 
     // Configure CORS
     const allowedOrigins = process.env.NODE_ENV === 'production'
@@ -30,6 +33,17 @@ async function bootstrap() {
         credentials: true,
     });
 
+    // Configure body parser with increased limits for image uploads
+    const maxFileSize = parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10MB default
+    const maxRequestSize = maxFileSize * 20; // Allow up to 20 images
+
+    app.use(express.json({ limit: `${maxRequestSize}b` }));
+    app.use(express.urlencoded({ limit: `${maxRequestSize}b`, extended: true }));
+    app.use(express.raw({ limit: `${maxRequestSize}b` }));
+    app.use(express.text({ limit: `${maxRequestSize}b` }));
+
+    console.log(`Body parser configured with limit: ${maxRequestSize} bytes (${Math.round(maxRequestSize / 1024 / 1024)}MB)`);
+
     // Configure sessions
     app.use(
         session({
@@ -45,7 +59,7 @@ async function bootstrap() {
     );
 
     const port = process.env.PORT || 3001;
-    const host = process.env.HOST || '0.0.0.0';
+    const host = process.env.HOST || 'localhost';
     await app.listen(port, host);
     console.log(`Application is running on: http://${host}:${port}`);
 }

@@ -28,7 +28,9 @@ export default function VenueDetail() {
   const { data: venue, isLoading, error } = useQuery<VenueWithDetails>({
     queryKey: ['/api/venues', venueId],
     queryFn: async () => {
-      const response = await fetch(`${config.apiUrl}/venues/${venueId}`);
+      const url = `${config.apiUrl}/venues/${venueId}`;
+      console.log('Fetching venue from URL:', url);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch venue');
       }
@@ -47,7 +49,9 @@ export default function VenueDetail() {
         durationMinutes: durationMinutes.toString(),
       });
 
-      const response = await fetch(`${config.apiUrl}/venues/${venueId}/availability?${params}`);
+      const url = `${config.apiUrl}/venues/${venueId}/availability?${params}`;
+      console.log('Checking availability from URL:', url);
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to check availability');
       }

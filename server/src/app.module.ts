@@ -29,8 +29,8 @@ async function resolveIPv4(hostname: string): Promise<string> {
         ConfigModule.forRoot({
             isGlobal: true,
             envFilePath: [
-                `.env.${process.env.NODE_ENV || 'development'}`,
-                '.env'
+                '.env',
+                `.env.${process.env.NODE_ENV || 'local'}`
             ]
         }),
         TypeOrmModule.forRootAsync({
