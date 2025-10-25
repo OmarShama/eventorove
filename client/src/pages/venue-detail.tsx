@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import DateTimeRangePicker from "@/components/DateTimeRangePicker";
-import MapView from "@/components/MapView";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -188,7 +194,7 @@ export default function VenueDetail() {
     );
   }
 
-  const mainImage = venue.images?.[0]?.path || "https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
+  // No fallback image needed now
 
   return (
     <div>
@@ -204,10 +210,6 @@ export default function VenueDetail() {
               >
                 <i className="fas fa-arrow-left"></i>
               </Button>
-              <div>
-                <h1 className="text-2xl font-semibold text-foreground">{venue.title}</h1>
-                <p className="text-muted-foreground">{venue.address}, {venue.city}</p>
-              </div>
             </div>
             <div className="flex items-center space-x-3">
               <div className="flex items-center">
@@ -226,57 +228,47 @@ export default function VenueDetail() {
         </div>
       </div>
 
-      {/* Image Gallery */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          <div className="relative rounded-2xl overflow-hidden aspect-video lg:aspect-square">
-            <img
-              src={mainImage}
-              alt={venue.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {venue.images?.slice(1, 5).map((image, index) => (
-              <div key={index} className="relative rounded-xl overflow-hidden aspect-square">
-                <img
-                  src={image.path}
-                  alt={`${venue.title} ${index + 2}`}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-            {venue.images && venue.images.length > 5 && (
-              <div className="relative rounded-xl overflow-hidden aspect-square bg-black/10 flex items-center justify-center cursor-pointer">
-                <div className="text-center">
-                  <i className="fas fa-plus text-2xl text-white mb-2"></i>
-                  <p className="text-white font-medium">+{venue.images.length - 4} more</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Key Features */}
-            <div className="flex items-center space-x-6 mb-8 p-4 bg-muted/30 rounded-2xl">
-              <div className="flex items-center">
-                <i className="fas fa-bolt text-accent text-xl mr-2"></i>
-                <span className="font-medium text-foreground">Instant Booking</span>
-              </div>
-              <div className="flex items-center">
-                <i className="fas fa-credit-card text-secondary text-xl mr-2"></i>
-                <span className="font-medium text-foreground">Pay at Venue</span>
-              </div>
-              <div className="flex items-center">
-                <i className="fas fa-clock text-primary text-xl mr-2"></i>
-                <span className="font-medium text-foreground">Cairo Time</span>
-              </div>
+            {/* Venue Title */}
+            <div className="mb-6">
+              <h1 className="text-4xl font-bold text-foreground mb-2">{venue.title}</h1>
+              <p className="text-lg text-muted-foreground">{venue.address}, {venue.city}</p>
+            </div>
+
+            {/* Image Slider */}
+            <div className="mb-8">
+              {venue.images && venue.images.length > 0 ? (
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {venue.images.map((image, index) => (
+                      <CarouselItem key={index}>
+                        <div className="relative rounded-2xl overflow-hidden aspect-video">
+                          <img
+                            src={image.path}
+                            alt={`${venue.title} ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="left-4" />
+                  <CarouselNext className="right-4" />
+                </Carousel>
+              ) : (
+                <div className="relative rounded-2xl overflow-hidden aspect-video">
+                  <img
+                    src="https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
+                    alt={venue.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -347,6 +339,21 @@ export default function VenueDetail() {
                   </div>
                 </div>
               </div>
+
+              {/* Amenities under Venue Details */}
+              {venue.amenities && venue.amenities.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Amenities</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {venue.amenities.map((amenity, index) => (
+                      <div key={index} className="flex items-center">
+                        <i className="fas fa-check text-primary mr-3"></i>
+                        <span className="text-foreground">{amenity.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Host Information */}
@@ -386,20 +393,6 @@ export default function VenueDetail() {
               </div>
             )}
 
-            {/* Amenities */}
-            {venue.amenities && venue.amenities.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-foreground mb-4">Amenities</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {venue.amenities.map((amenity, index) => (
-                    <div key={index} className="flex items-center">
-                      <i className="fas fa-check text-primary mr-3"></i>
-                      <span className="text-foreground">{amenity.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Packages */}
             {venue.packages && venue.packages.length > 0 && (
@@ -426,17 +419,6 @@ export default function VenueDetail() {
               </div>
             )}
 
-            {/* Location */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-foreground mb-4">Location</h2>
-              <MapView
-                venues={[venue]}
-                center={venue.lat && venue.lng ? { lat: parseFloat(venue.lat), lng: parseFloat(venue.lng) } : undefined}
-                zoom={15}
-                height="300px"
-                className="rounded-2xl"
-              />
-            </div>
           </div>
 
           {/* Booking Sidebar */}
