@@ -21,6 +21,7 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
+env.local
 
 # Debug
 npm-debug.log*
@@ -30,3 +31,10 @@ yarn-error.log*
 # Vite
 *.timestamp-*
 vite.config.ts.*
+
+# Next.js build output
+.next/
+out/
+
+# Next.js cache
+.next/cache/
