@@ -38,3 +38,35 @@ coverage/
 
 # Project specific
 attached_assets/
+
+# Local development files
+# Local environment files
+server/env.local
+client/env.local
+
+# Local Docker compose files
+docker-compose.local.yml
+docker-compose.local-test.yml
+
+# Local migration scripts
+migrate-data*.sh
+migrate-data*.bat
+simple-migrate.sh
+docker-migrate-data.sh
+
+# Local testing scripts
+scripts/test-local.sh
+scripts/test-free-deployment.sh
+
+# Backup directories
+backups/
+backups;C/
+
+# Temporary files
+1
+11.6.2
+nul
+
+# Local SSL certificates (self-signed)
+nginx/ssl/cert.pem
+nginx/ssl/key.pem
