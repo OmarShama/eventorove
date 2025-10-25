@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     ArrowLeft,
     Edit,
@@ -13,12 +12,13 @@ import {
     Users,
     Clock,
     DollarSign,
-    Calendar,
     Image,
     CheckCircle,
     XCircle,
     AlertCircle,
     Building2,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { venueApi, adminApi } from '@/lib/api';
@@ -30,6 +30,7 @@ export default function VenueManagement() {
     const { isAuthenticated, user, isLoading: authLoading } = useAuth();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     // Redirect if not authenticated or not admin/host
     useEffect(() => {
@@ -125,6 +126,18 @@ export default function VenueManagement() {
     const canEdit = user?.role === 'admin' || (user?.role === 'host' && venue?.host?.id === user.id);
     const canApprove = user?.role === 'admin' && venue?.status === 'pending_approval';
 
+    const nextImage = () => {
+        if (venue?.images && venue.images.length > 0) {
+            setCurrentImageIndex((prev) => (prev + 1) % venue.images.length);
+        }
+    };
+
+    const prevImage = () => {
+        if (venue?.images && venue.images.length > 0) {
+            setCurrentImageIndex((prev) => (prev - 1 + venue.images.length) % venue.images.length);
+        }
+    };
+
     if (authLoading || isLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -176,7 +189,7 @@ export default function VenueManagement() {
                                 {getStatusBadge(venue.status)}
                                 <span className="text-gray-600 flex items-center gap-1">
                                     <MapPin className="h-4 w-4" />
-                                    {venue.city}
+                                    {venue.address}, {venue.city}
                                 </span>
                             </div>
                         </div>
@@ -213,190 +226,115 @@ export default function VenueManagement() {
                     </div>
                 </div>
 
-                <Tabs defaultValue="overview" className="space-y-4">
-                    <TabsList>
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="images">Images</TabsTrigger>
-                        <TabsTrigger value="pricing">Pricing & Packages</TabsTrigger>
-                        <TabsTrigger value="bookings">Bookings</TabsTrigger>
-                    </TabsList>
+                {/* Image Slider */}
+                {venue.images && venue.images.length > 0 ? (
+                    <Card className="mb-8">
+                        <CardContent className="p-0">
+                            <div className="relative h-96 rounded-lg overflow-hidden">
+                                <img
+                                    src={venue.images[currentImageIndex]?.path || "https://images.unsplash.com/photo-1582719508461-905c673771fd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"}
+                                    alt={venue.title}
+                                    className="w-full h-full object-cover"
+                                />
 
-                    <TabsContent value="overview" className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-3">
-                            {/* Basic Info */}
-                            <Card className="md:col-span-2">
-                                <CardHeader>
-                                    <CardTitle>Venue Information</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
-                                        <p className="text-gray-600">{venue.description}</p>
-                                    </div>
+                                {venue.images.length > 1 && (
+                                    <>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={prevImage}
+                                            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={nextImage}
+                                            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <h4 className="font-semibold text-gray-900 mb-2">Category</h4>
-                                            <Badge variant="secondary">{venue.category}</Badge>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-gray-900 mb-2">Capacity</h4>
-                                            <div className="flex items-center gap-1 text-gray-600">
-                                                <Users className="h-4 w-4" />
-                                                {venue.capacity} people
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 mb-2">Address</h4>
-                                        <div className="flex items-start gap-2 text-gray-600">
-                                            <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
-                                            <span>{venue.address}, {venue.city}</span>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 mb-2">Amenities</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {venue.amenities && venue.amenities.length > 0 ? (
-                                                venue.amenities.map((amenity) => (
-                                                    <Badge key={amenity.id} variant="outline">
-                                                        {amenity.name}
-                                                    </Badge>
-                                                ))
-                                            ) : (
-                                                <span className="text-gray-500">No amenities listed</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Quick Stats */}
-                            <div className="space-y-4">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-sm">Host Information</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center space-x-3">
-                                            {venue.host?.profileImageUrl ? (
-                                                <img
-                                                    src={venue.host.profileImageUrl}
-                                                    alt={`${venue.host.firstName} ${venue.host.lastName}`}
-                                                    className="h-10 w-10 rounded-full object-cover"
+                                        {/* Image indicators */}
+                                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                                            {venue.images.map((_, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => setCurrentImageIndex(index)}
+                                                    className={`w-2 h-2 rounded-full transition-colors ${index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                                                        }`}
                                                 />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                                    <Users className="h-5 w-5 text-gray-500" />
-                                                </div>
-                                            )}
-                                            <div>
-                                                <div className="font-medium text-gray-900">
-                                                    {venue.host?.firstName} {venue.host?.lastName}
-                                                </div>
-                                                <div className="text-sm text-gray-500">{venue.host?.email}</div>
-                                            </div>
+                                            ))}
                                         </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-sm">Pricing</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-600">Base Rate</span>
-                                                <span className="font-medium flex items-center gap-1">
-                                                    <DollarSign className="h-4 w-4" />
-                                                    {venue.baseHourlyPriceEGP}/hour
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-600">Min Booking</span>
-                                                <span className="font-medium flex items-center gap-1">
-                                                    <Clock className="h-4 w-4" />
-                                                    {venue.minBookingMinutes} min
-                                                </span>
-                                            </div>
-                                            {venue.maxBookingMinutes && (
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-gray-600">Max Booking</span>
-                                                    <span className="font-medium flex items-center gap-1">
-                                                        <Clock className="h-4 w-4" />
-                                                        {venue.maxBookingMinutes} min
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-sm">Created</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-sm text-gray-600">
-                                            {new Date(venue.createdAt).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                            })}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="images" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Image className="h-5 w-5" />
-                                    Venue Images
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {venue.images && venue.images.length > 0 ? (
-                                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                        {venue.images.map((image) => (
-                                            <div key={image.id} className="relative group">
-                                                <img
-                                                    src={image.path}
-                                                    alt="Venue"
-                                                    className="w-full h-48 object-cover rounded-lg"
-                                                />
-                                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <Image className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <p className="text-gray-500">No images uploaded</p>
-                                    </div>
+                                    </>
                                 )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card className="mb-8">
+                        <CardContent className="p-0">
+                            <div className="relative h-96 rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center">
+                                <div className="text-center">
+                                    <Image className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-gray-500">No images available</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-                    <TabsContent value="pricing" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Packages</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {venue.packages && venue.packages.length > 0 ? (
+                {/* Venue Details */}
+                <div className="grid gap-6 md:grid-cols-3">
+                    {/* Main Information */}
+                    <Card className="md:col-span-2">
+                        <CardHeader>
+                            <CardTitle>Venue Information</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                                <p className="text-gray-600">{venue.description}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-2">Category</h4>
+                                    <Badge variant="secondary">{venue.category}</Badge>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-2">Capacity</h4>
+                                    <div className="flex items-center gap-1 text-gray-600">
+                                        <Users className="h-4 w-4" />
+                                        {venue.capacity} people
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Amenities</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {venue.amenities && venue.amenities.length > 0 ? (
+                                        venue.amenities.map((amenity) => (
+                                            <Badge key={amenity.id} variant="outline">
+                                                {amenity.name}
+                                            </Badge>
+                                        ))
+                                    ) : (
+                                        <span className="text-gray-500">No amenities listed</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {venue.packages && venue.packages.length > 0 && (
+                                <div>
+                                    <h4 className="font-semibold text-gray-900 mb-4">Packages</h4>
                                     <div className="space-y-4">
                                         {venue.packages.map((pkg) => (
                                             <div key={pkg.id} className="border rounded-lg p-4">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <h4 className="font-semibold">{pkg.name}</h4>
+                                                    <h5 className="font-medium">{pkg.name}</h5>
                                                     <Badge variant="outline">
                                                         ${pkg.priceEGP}
                                                     </Badge>
@@ -408,33 +346,89 @@ export default function VenueManagement() {
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <p className="text-gray-500">No packages configured</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                    <TabsContent value="bookings" className="space-y-4">
+                    {/* Sidebar Information */}
+                    <div className="space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Calendar className="h-5 w-5" />
-                                    Recent Bookings
-                                </CardTitle>
+                                <CardTitle className="text-sm">Host Information</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-center py-8">
-                                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-500">Booking data will be implemented in future updates</p>
+                                <div className="flex items-center space-x-3">
+                                    {venue.host?.profileImageUrl ? (
+                                        <img
+                                            src={venue.host.profileImageUrl}
+                                            alt={`${venue.host.firstName} ${venue.host.lastName}`}
+                                            className="h-10 w-10 rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <Users className="h-5 w-5 text-gray-500" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="font-medium text-gray-900">
+                                            {venue.host?.firstName} {venue.host?.lastName}
+                                        </div>
+                                        <div className="text-sm text-gray-500">{venue.host?.email}</div>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
-                    </TabsContent>
-                </Tabs>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm">Pricing</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Base Rate</span>
+                                        <span className="font-medium flex items-center gap-1">
+                                            <DollarSign className="h-4 w-4" />
+                                            {venue.baseHourlyPriceEGP}/hour
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Min Booking</span>
+                                        <span className="font-medium flex items-center gap-1">
+                                            <Clock className="h-4 w-4" />
+                                            {venue.minBookingMinutes} min
+                                        </span>
+                                    </div>
+                                    {venue.maxBookingMinutes && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-600">Max Booking</span>
+                                            <span className="font-medium flex items-center gap-1">
+                                                <Clock className="h-4 w-4" />
+                                                {venue.maxBookingMinutes} min
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm">Created</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-sm text-gray-600">
+                                    {new Date(venue.createdAt).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </div>
     );
