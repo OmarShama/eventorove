@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_venues_host_id ON venues(host_id);
 CREATE TABLE IF NOT EXISTS venue_images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
-    image_url VARCHAR(500) NOT NULL,
+    image_url TEXT NOT NULL,
     alt_text VARCHAR(200),
     display_order INTEGER DEFAULT 0,
     is_main BOOLEAN DEFAULT FALSE,
@@ -90,16 +90,7 @@ CREATE TABLE IF NOT EXISTS availability_rules (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create blackouts table
-CREATE TABLE IF NOT EXISTS blackouts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    reason VARCHAR(200),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Blackouts table will be created in migration 002
 
 -- Create bookings table
 CREATE TABLE IF NOT EXISTS bookings (

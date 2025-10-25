@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Booking } from './booking.entity';
 import { Venue } from '../venues/venue.entity';
 import { User } from '../users/user.entity';
@@ -19,108 +19,119 @@ export class BookingsService {
     private venueRepository: Repository<Venue>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private dataSource: DataSource,
   ) { }
 
   async createBooking(createBookingDto: CreateBookingRequest, guestId: string): Promise<BookingWithDetailsDto> {
-    // Validate venue exists and is approved
-    const venue = await this.venueRepository.findOne({
-      where: { id: createBookingDto.venueId },
-      relations: ['availabilityRules', 'blackouts', 'bookings']
-    });
+    return await this.dataSource.transaction(async (manager) => {
+      // Validate venue exists and is approved
+      const venue = await manager.findOne(Venue, {
+        where: { id: createBookingDto.venueId },
+        relations: ['availabilityRules', 'blackouts', 'bookings']
+      });
 
-    if (!venue) {
-      throw new Error('Venue not found');
-    }
-
-    if (venue.status !== 'approved') {
-      throw new Error('Venue is not available for booking');
-    }
-
-    // Calculate duration and validate
-    const startDateTime = new Date(createBookingDto.startDateTime);
-    const endDateTime = new Date(createBookingDto.endDateTime);
-    const durationMs = endDateTime.getTime() - startDateTime.getTime();
-    const durationMinutes = durationMs / (1000 * 60);
-
-    if (durationMinutes < (venue.minBookingMinutes || 30)) {
-      throw new Error(`Minimum booking duration is ${venue.minBookingMinutes || 30} minutes`);
-    }
-
-    if (venue.maxBookingMinutes && durationMinutes > venue.maxBookingMinutes) {
-      throw new Error(`Maximum booking duration is ${venue.maxBookingMinutes} minutes`);
-    }
-
-    // Validate capacity
-    if (createBookingDto.guestCount > venue.capacity) {
-      throw new Error(`Venue capacity is ${venue.capacity} people`);
-    }
-
-    // Check availability
-    const dayOfWeek = startDateTime.getDay();
-    const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
-    if (dayRule) {
-      const [openHour, openMinute] = dayRule.startTime.split(':').map(Number);
-      const [closeHour, closeMinute] = dayRule.endTime.split(':').map(Number);
-
-      const openTime = new Date(startDateTime);
-      openTime.setHours(openHour, openMinute, 0, 0);
-
-      const closeTime = new Date(startDateTime);
-      closeTime.setHours(closeHour, closeMinute, 0, 0);
-
-      if (startDateTime < openTime || endDateTime > closeTime) {
-        throw new Error(`Venue is only available from ${dayRule.startTime} to ${dayRule.endTime} on ${this.getDayName(dayOfWeek)}`);
+      if (!venue) {
+        throw new Error('Venue not found');
       }
-    }
 
-    // Check blackouts
-    const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDate);
-      const blackoutEnd = new Date(blackout.endDate);
-      return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
+      if (venue.status !== 'approved') {
+        throw new Error('Venue is not available for booking');
+      }
+
+      // Calculate duration and validate
+      const startDateTime = new Date(createBookingDto.startDateTime);
+      const endDateTime = new Date(createBookingDto.endDateTime);
+      const durationMs = endDateTime.getTime() - startDateTime.getTime();
+      const durationMinutes = durationMs / (1000 * 60);
+
+      if (durationMinutes < (venue.minBookingMinutes || 30)) {
+        throw new Error(`Minimum booking duration is ${venue.minBookingMinutes || 30} minutes`);
+      }
+
+      if (venue.maxBookingMinutes && durationMinutes > venue.maxBookingMinutes) {
+        throw new Error(`Maximum booking duration is ${venue.maxBookingMinutes} minutes`);
+      }
+
+      // Validate capacity
+      if (createBookingDto.guestCount > venue.capacity) {
+        throw new Error(`Venue capacity is ${venue.capacity} people`);
+      }
+
+      // Check availability
+      const dayOfWeek = startDateTime.getDay();
+      const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
+      if (dayRule) {
+        const [openHour, openMinute] = dayRule.startTime.split(':').map(Number);
+        const [closeHour, closeMinute] = dayRule.endTime.split(':').map(Number);
+
+        const openTime = new Date(startDateTime);
+        openTime.setHours(openHour, openMinute, 0, 0);
+
+        const closeTime = new Date(startDateTime);
+        closeTime.setHours(closeHour, closeMinute, 0, 0);
+
+        if (startDateTime < openTime || endDateTime > closeTime) {
+          throw new Error(`Venue is only available from ${dayRule.startTime} to ${dayRule.endTime} on ${this.getDayName(dayOfWeek)}`);
+        }
+      }
+
+      // Check blackouts
+      const conflictingBlackout = venue.blackouts?.find(blackout => {
+        const requestDayOfWeek = startDateTime.getDay();
+        const requestStartTime = startDateTime.toTimeString().slice(0, 5); // HH:MM format
+        const requestEndTime = endDateTime.toTimeString().slice(0, 5); // HH:MM format
+
+        // Check if the request is on the same day of week as the blackout
+        if (requestDayOfWeek !== blackout.dayOfWeek) {
+          return false;
+        }
+
+        // Check if the time ranges overlap
+        return (requestStartTime < blackout.endTime && requestEndTime > blackout.startTime);
+      });
+
+      if (conflictingBlackout) {
+        throw new Error(`Venue is unavailable during this time: ${conflictingBlackout.reason}`);
+      }
+
+      // Check existing bookings
+      const conflictingBooking = venue.bookings?.find(booking => {
+        if (booking.status === 'cancelled') return false;
+        const bookingStart = new Date(booking.startDateTime);
+        const bookingEnd = new Date(booking.endDateTime);
+        return (startDateTime < bookingEnd && endDateTime > bookingStart);
+      });
+
+      if (conflictingBooking) {
+        throw new Error('This time slot is already booked');
+      }
+
+      // Calculate total price
+      const hours = Math.ceil(durationMinutes / 30) * 0.5;
+      const basePrice = parseFloat(venue.baseHourlyPriceEGP.toString());
+      const totalPrice = hours * basePrice;
+
+      // Get guest user
+      const guest = await manager.findOne(User, { where: { id: guestId } });
+      if (!guest) {
+        throw new Error('User not found');
+      }
+
+      // Create booking
+      const booking = manager.create(Booking, {
+        venue,
+        guest,
+        startDateTime,
+        endDateTime,
+        guestCount: createBookingDto.guestCount,
+        specialRequests: createBookingDto.specialRequests,
+        totalPriceEGP: Math.round(totalPrice),
+        status: 'confirmed',
+      });
+
+      const savedBooking = await manager.save(Booking, booking);
+      return this.getBookingById(savedBooking.id);
     });
-
-    if (conflictingBlackout) {
-      throw new Error(`Venue is unavailable during this time: ${conflictingBlackout.reason}`);
-    }
-
-    // Check existing bookings
-    const conflictingBooking = venue.bookings?.find(booking => {
-      if (booking.status === 'cancelled') return false;
-      const bookingStart = new Date(booking.startDateTime);
-      const bookingEnd = new Date(booking.endDateTime);
-      return (startDateTime < bookingEnd && endDateTime > bookingStart);
-    });
-
-    if (conflictingBooking) {
-      throw new Error('This time slot is already booked');
-    }
-
-    // Calculate total price
-    const hours = Math.ceil(durationMinutes / 30) * 0.5;
-    const basePrice = parseFloat(venue.baseHourlyPriceEGP.toString());
-    const totalPrice = hours * basePrice;
-
-    // Get guest user
-    const guest = await this.userRepository.findOne({ where: { id: guestId } });
-    if (!guest) {
-      throw new Error('User not found');
-    }
-
-    // Create booking
-    const booking = this.bookingRepository.create({
-      venue,
-      guest,
-      startDateTime,
-      endDateTime,
-      guestCount: createBookingDto.guestCount,
-      specialRequests: createBookingDto.specialRequests,
-      totalPriceEGP: Math.round(totalPrice),
-      status: 'confirmed',
-    });
-
-    const savedBooking = await this.bookingRepository.save(booking);
-    return this.getBookingById(savedBooking.id);
   }
 
   private getDayName(dayOfWeek: number): string {

@@ -249,11 +249,17 @@ export class VenuesController {
   @UseGuards(JwtAuthGuard)
   async addAvailabilityRule(
     @Param('id') id: string,
-    @Body() ruleData: { dayOfWeek: number; startTime: string; endTime: string },
+    @Body() ruleData: { dayOfWeek: number; openTime: string; closeTime: string },
     @CurrentUser() currentUser: CurrentUserData,
   ): Promise<ApiResponse<any>> {
     try {
-      const rule = await this.venuesService.addAvailabilityRule(id, ruleData);
+      // Map openTime/closeTime to startTime/endTime
+      const mappedRuleData = {
+        dayOfWeek: ruleData.dayOfWeek,
+        startTime: ruleData.openTime,
+        endTime: ruleData.closeTime,
+      };
+      const rule = await this.venuesService.addAvailabilityRule(id, mappedRuleData);
       return {
         success: true,
         data: rule,
@@ -274,7 +280,7 @@ export class VenuesController {
   @UseGuards(JwtAuthGuard)
   async addBlackout(
     @Param('id') id: string,
-    @Body() blackoutData: { startDate: string; endDate: string; reason: string },
+    @Body() blackoutData: { dayOfWeek: number; startTime: string; endTime: string; reason: string },
     @CurrentUser() currentUser: CurrentUserData,
   ): Promise<ApiResponse<any>> {
     try {

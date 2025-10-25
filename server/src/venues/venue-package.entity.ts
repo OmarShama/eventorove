@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Venue } from './venue.entity';
 
 @Entity('venue_packages')
@@ -10,6 +10,7 @@ export class VenuePackage {
     venueId: string;
 
     @ManyToOne(() => Venue, v => v.packages)
+    @JoinColumn({ name: 'venue_id' })
     venue: Venue;
 
     @Column({ type: 'varchar', length: 120 })
@@ -24,6 +25,15 @@ export class VenuePackage {
     @Column('int', { nullable: true })
     durationMinutes: number;
 
-    @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+    @Column('int', { nullable: true })
+    maxGuests: number;
+
+    @Column('boolean', { default: true })
+    isActive: boolean;
+
+    @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;
+
+    @UpdateDateColumn({ type: 'timestamptz' })
+    updatedAt: Date;
 }

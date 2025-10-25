@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Venue } from '../venues/venue.entity';
 import { User } from '../users/user.entity';
 
@@ -10,9 +10,11 @@ export class Booking {
     id: string;
 
     @ManyToOne(() => Venue, v => v.bookings, { eager: true })
+    @JoinColumn({ name: 'venue_id' })
     venue: Venue;
 
     @ManyToOne(() => User, u => u.bookings, { eager: true })
+    @JoinColumn({ name: 'guest_id' })
     guest: User;
 
     @Column({ type: 'timestamptz' })
@@ -36,6 +38,6 @@ export class Booking {
     @CreateDateColumn({ type: 'timestamptz' })
     createdAt: Date;
 
-    @CreateDateColumn({ type: 'timestamptz' })
+    @UpdateDateColumn({ type: 'timestamptz' })
     updatedAt: Date;
 }

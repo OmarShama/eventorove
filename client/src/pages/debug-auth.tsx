@@ -6,8 +6,10 @@ export default function DebugAuth() {
     const { user, isAuthenticated, isLoading, isGuest } = useAuth();
     const [token, setToken] = useState<string | null>(null);
     const [apiTest, setApiTest] = useState<any>(null);
+    const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
+        setIsClient(true);
         if (typeof window !== 'undefined') {
             setToken(localStorage.getItem('token'));
         }
@@ -82,8 +84,8 @@ export default function DebugAuth() {
                     <div className="space-y-2">
                         <p><strong>NODE_ENV:</strong> {process.env.NODE_ENV}</p>
                         <p><strong>API_BASE_URL:</strong> {process.env.NEXT_PUBLIC_API_BASE_URL || '/api'}</p>
-                        <p><strong>Window available:</strong> {typeof window !== 'undefined' ? 'Yes' : 'No'}</p>
-                        <p><strong>localStorage available:</strong> {typeof window !== 'undefined' && window.localStorage ? 'Yes' : 'No'}</p>
+                        <p><strong>Window available:</strong> {isClient ? (typeof window !== 'undefined' ? 'Yes' : 'No') : 'Loading...'}</p>
+                        <p><strong>localStorage available:</strong> {isClient ? (typeof window !== 'undefined' && window.localStorage ? 'Yes' : 'No') : 'Loading...'}</p>
                     </div>
                 </div>
             </div>

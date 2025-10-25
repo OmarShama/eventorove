@@ -46,6 +46,8 @@ export interface VenuePackageDto {
   description?: string;
   priceEGP: string;
   durationMinutes?: number;
+  maxGuests?: number;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -61,8 +63,9 @@ export interface AvailabilityRuleDto {
 export interface BlackoutDto {
   id: string;
   venueId: string;
-  startDate: string;
-  endDate: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
   reason?: string;
   createdAt: string;
 }
@@ -132,6 +135,11 @@ export interface CreateVenueRequest {
   minBookingMinutes?: number;
   maxBookingMinutes?: number;
   bufferMinutes?: number;
+  images?: Array<{ imageUrl: string; altText?: string; displayOrder?: number; isMain?: boolean }>;
+  amenities?: Array<{ name: string }>;
+  packages?: Array<{ name: string; description?: string; priceEGP: number; durationMinutes: number; maxGuests?: number; isActive?: boolean }>;
+  availabilityRules?: Array<{ dayOfWeek: number; openTime: string; closeTime: string; isAvailable?: boolean }>;
+  blackouts?: Array<{ dayOfWeek: number; startTime: string; endTime: string; reason: string }>;
 }
 
 export interface UpdateVenueRequest extends Partial<CreateVenueRequest> { }
