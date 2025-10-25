@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# MonoNestNext Production Deployment Script
+# Eventorove Production Deployment Script
 # This script deploys the application using the dev environment configuration
 
 set -e
 
-echo "🚀 Starting MonoNestNext Production Deployment..."
+echo "🚀 Starting Eventorove Production Deployment..."
 
 # Colors for output
 RED='\033[0;31m'

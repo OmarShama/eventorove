@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Stop MonoNestNext Production Deployment
+# Stop Eventorove Production Deployment
 
 set -e
 
-echo "🛑 Stopping MonoNestNext Production Deployment..."
+echo "🛑 Stopping Eventorove Production Deployment..."
 
 # Colors for output
 RED='\033[0;31m'

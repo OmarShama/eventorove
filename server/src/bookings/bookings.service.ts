@@ -59,8 +59,8 @@ export class BookingsService {
     const dayOfWeek = startDateTime.getDay();
     const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
     if (dayRule) {
-      const [openHour, openMinute] = dayRule.openTime.split(':').map(Number);
-      const [closeHour, closeMinute] = dayRule.closeTime.split(':').map(Number);
+      const [openHour, openMinute] = dayRule.startTime.split(':').map(Number);
+      const [closeHour, closeMinute] = dayRule.endTime.split(':').map(Number);
 
       const openTime = new Date(startDateTime);
       openTime.setHours(openHour, openMinute, 0, 0);
@@ -69,14 +69,14 @@ export class BookingsService {
       closeTime.setHours(closeHour, closeMinute, 0, 0);
 
       if (startDateTime < openTime || endDateTime > closeTime) {
-        throw new Error(`Venue is only available from ${dayRule.openTime} to ${dayRule.closeTime} on ${this.getDayName(dayOfWeek)}`);
+        throw new Error(`Venue is only available from ${dayRule.startTime} to ${dayRule.endTime} on ${this.getDayName(dayOfWeek)}`);
       }
     }
 
     // Check blackouts
     const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDateTime);
-      const blackoutEnd = new Date(blackout.endDateTime);
+      const blackoutStart = new Date(blackout.startDate);
+      const blackoutEnd = new Date(blackout.endDate);
       return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
     });
 

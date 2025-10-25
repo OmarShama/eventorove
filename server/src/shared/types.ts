@@ -53,16 +53,16 @@ export interface AvailabilityRuleDto {
   id: string;
   venueId: string;
   dayOfWeek: number;
-  openTime: string;
-  closeTime: string;
+  startTime: string;
+  endTime: string;
   createdAt: string;
 }
 
 export interface BlackoutDto {
   id: string;
   venueId: string;
-  startDateTime: string;
-  endDateTime: string;
+  startDate: string;
+  endDate: string;
   reason?: string;
   createdAt: string;
 }
@@ -134,7 +134,7 @@ export interface CreateVenueRequest {
   bufferMinutes?: number;
 }
 
-export interface UpdateVenueRequest extends Partial<CreateVenueRequest> {}
+export interface UpdateVenueRequest extends Partial<CreateVenueRequest> { }
 
 export interface CreateBookingRequest {
   venueId: string;

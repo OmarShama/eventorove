@@ -1,5 +1,5 @@
 @echo off
-echo 🔄 Windows Data Migration for MonoNestNext
+echo 🔄 Windows Data Migration for Eventorove
 echo ==========================================
 
 REM Configuration
@@ -62,7 +62,7 @@ REM Step 3: Restore to Docker database
 echo 🚀 Restoring data to Docker database...
 
 REM Copy backup to Docker container
-docker cp "backups\migration_backup.sql" mononestnext_db:/tmp/migration_backup.sql
+docker cp "backups\migration_backup.sql" eventorove_db:/tmp/migration_backup.sql
 
 REM Restore the backup
 docker-compose exec -T db psql -U postgres -d stagea -f /tmp/migration_backup.sql

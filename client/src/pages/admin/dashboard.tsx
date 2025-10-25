@@ -31,25 +31,25 @@ export default function AdminDashboard() {
 
   const { data: pendingVenues, isLoading: pendingLoading } = useQuery<VenueWithDetails[]>({
     queryKey: ['/api/admin/venues', 'pending_approval'],
-    queryFn: () => getWithAuth('/api/admin/venues?status=pending_approval'),
+    queryFn: () => getWithAuth('/admin/venues?status=pending_approval'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const { data: allVenues, isLoading: allVenuesLoading } = useQuery<VenueWithDetails[]>({
     queryKey: ['/api/admin/venues'],
-    queryFn: () => getWithAuth('/api/admin/venues'),
+    queryFn: () => getWithAuth('/admin/venues'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const { data: bookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ['/api/admin/bookings'],
-    queryFn: () => getWithAuth('/api/admin/bookings'),
+    queryFn: () => getWithAuth('/admin/bookings'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ['/api/admin/stats'],
-    queryFn: () => getWithAuth('/api/admin/stats'),
+    queryFn: () => getWithAuth('/admin/stats'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 

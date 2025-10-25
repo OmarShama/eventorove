@@ -1,6 +1,6 @@
 # 🆓 Complete FREE Deployment Guide
 
-This guide will help you deploy your MonoNestNext app completely FREE using the best free hosting services available.
+This guide will help you deploy your Eventorove app completely FREE using the best free hosting services available.
 
 ## 🚀 Option 1: Railway (Recommended - Easiest)
 

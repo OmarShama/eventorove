@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { config } from "@/lib/config";
 
 export default function DebugAuth() {
     const { user, isAuthenticated, isLoading, isGuest } = useAuth();
@@ -14,7 +15,7 @@ export default function DebugAuth() {
 
     const testApi = async () => {
         try {
-            const response = await fetch('/api/auth/user', {
+            const response = await fetch(`${config.apiUrl}/auth/user`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },

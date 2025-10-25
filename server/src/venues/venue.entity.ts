@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, Index, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { User } from '../users/user.entity';
 import { VenueImage } from './venue-image.entity';
 import { VenueAmenity } from './venue-amenity.entity';
@@ -16,6 +16,7 @@ export class Venue {
     id: string;
 
     @ManyToOne(() => User, u => u.venues, { eager: true })
+    @JoinColumn({ name: 'host_id' })
     host: User;
 
     @Column({ type: 'varchar', length: 160 })

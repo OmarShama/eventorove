@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔧 Setting up environment files for MonoNestNext..."
+echo "🔧 Setting up environment files for Eventorove..."
 
 # Create server .env file if it doesn't exist
 if [ ! -f server/.env ]; then

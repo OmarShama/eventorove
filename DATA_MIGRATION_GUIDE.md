@@ -1,13 +1,13 @@
-# Data Migration Guide for MonoNestNext
+# Data Migration Guide for Eventorove
 
 This guide helps you migrate your existing local database data to the Docker containerized setup.
 
 ## 🎯 Overview
 
 Your Docker setup already has **separate containers** for each service:
-- **Database Container**: `mononestnext_db` (PostgreSQL)
-- **Server Container**: `mononestnext_server` (NestJS API)
-- **Client Container**: `mononestnext_client` (Next.js Frontend)
+- **Database Container**: `eventorove_db` (PostgreSQL)
+- **Server Container**: `eventorove_server` (NestJS API)
+- **Client Container**: `eventorove_client` (Next.js Frontend)
 
 ## 📋 Prerequisites
 
@@ -54,7 +54,7 @@ docker-compose up -d db
 pg_dump -h 127.0.0.1 -p 5432 -U postgres -d stagea --schema=stagea_local --no-owner --no-privileges -f backup.sql
 
 # 3. Restore to Docker database
-docker cp backup.sql mononestnext_db:/tmp/backup.sql
+docker cp backup.sql eventorove_db:/tmp/backup.sql
 docker-compose exec db psql -U postgres -d stagea -f /tmp/backup.sql
 ```
 
@@ -98,9 +98,9 @@ Your setup already uses separate containers. Verify this:
 docker ps
 
 # You should see:
-# - mononestnext_db (PostgreSQL)
-# - mononestnext_server (NestJS)
-# - mononestnext_client (Next.js)
+# - eventorove_db (PostgreSQL)
+# - eventorove_server (NestJS)
+# - eventorove_client (Next.js)
 ```
 
 ## 📁 Container Architecture
@@ -114,7 +114,7 @@ docker ps
 │  │   Port: 3000    │  │   Port: 3001    │  │ Port: 5432  │ │
 │  │                 │  │                 │  │             │ │
 │  │ Container:      │  │ Container:      │  │ Container:  │ │
-│  │ mononestnext_   │  │ mononestnext_   │  │ mononestnext│ │
+│  │ eventorove_   │  │ eventorove_   │  │ eventorove│ │
 │  │ client          │  │ server          │  │ _db         │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘

@@ -118,7 +118,7 @@ export class VenuesService {
 
     const venue = this.venueRepository.create({
       ...createVenueDto,
-      host,
+      host, // Set the host relation - TypeORM will handle the foreign key
       status: 'pending_approval', // Set to pending approval for review
     });
 
@@ -148,8 +148,8 @@ export class VenuesService {
     // Check availability rules
     const dayRule = venue.availabilityRules?.find(rule => rule.dayOfWeek === dayOfWeek);
     if (dayRule) {
-      const [openHour, openMinute] = dayRule.openTime.split(':').map(Number);
-      const [closeHour, closeMinute] = dayRule.closeTime.split(':').map(Number);
+      const [openHour, openMinute] = dayRule.startTime.split(':').map(Number);
+      const [closeHour, closeMinute] = dayRule.endTime.split(':').map(Number);
 
       const openTime = new Date(startDateTime);
       openTime.setHours(openHour, openMinute, 0, 0);
@@ -160,7 +160,7 @@ export class VenuesService {
       if (startDateTime < openTime || endDateTime > closeTime) {
         return {
           available: false,
-          conflicts: [`Venue is only available from ${dayRule.openTime} to ${dayRule.closeTime} on ${this.getDayName(dayOfWeek)}`],
+          conflicts: [`Venue is only available from ${dayRule.startTime} to ${dayRule.endTime} on ${this.getDayName(dayOfWeek)}`],
           suggestedTimes: [],
         };
       }
@@ -168,8 +168,8 @@ export class VenuesService {
 
     // Check blackouts
     const conflictingBlackout = venue.blackouts?.find(blackout => {
-      const blackoutStart = new Date(blackout.startDateTime);
-      const blackoutEnd = new Date(blackout.endDateTime);
+      const blackoutStart = new Date(blackout.startDate);
+      const blackoutEnd = new Date(blackout.endDate);
       return (startDateTime < blackoutEnd && endDateTime > blackoutStart);
     });
 
@@ -218,8 +218,8 @@ export class VenuesService {
     const image = this.venueImageRepository.create({
       venueId,
       venue,
-      url: imageURL,
-      order: 0, // You might want to calculate the next index
+      imageUrl: imageURL,
+      displayOrder: 0, // You might want to calculate the next index
     });
 
     return await this.venueImageRepository.save(image);
@@ -255,7 +255,7 @@ export class VenuesService {
     return await this.venuePackageRepository.save(venuePackage);
   }
 
-  async addAvailabilityRule(venueId: string, ruleData: { dayOfWeek: number; openTime: string; closeTime: string }): Promise<any> {
+  async addAvailabilityRule(venueId: string, ruleData: { dayOfWeek: number; startTime: string; endTime: string }): Promise<any> {
     const venue = await this.venueRepository.findOne({ where: { id: venueId } });
     if (!venue) {
       throw new Error('Venue not found');
@@ -270,7 +270,7 @@ export class VenuesService {
     return await this.availabilityRuleRepository.save(rule);
   }
 
-  async addBlackout(venueId: string, blackoutData: { startDateTime: string; endDateTime: string; reason: string }): Promise<any> {
+  async addBlackout(venueId: string, blackoutData: { startDate: string; endDate: string; reason: string }): Promise<any> {
     const venue = await this.venueRepository.findOne({ where: { id: venueId } });
     if (!venue) {
       throw new Error('Venue not found');
@@ -279,8 +279,8 @@ export class VenuesService {
     const blackout = this.blackoutRepository.create({
       venueId,
       venue,
-      startDateTime: new Date(blackoutData.startDateTime),
-      endDateTime: new Date(blackoutData.endDateTime),
+      startDate: new Date(blackoutData.startDate),
+      endDate: new Date(blackoutData.endDate),
       reason: blackoutData.reason,
     });
 
@@ -433,15 +433,15 @@ export class VenuesService {
         id: rule.id,
         venueId: rule.venueId,
         dayOfWeek: rule.dayOfWeek,
-        openTime: rule.openTime,
-        closeTime: rule.closeTime,
+        startTime: rule.startTime,
+        endTime: rule.endTime,
         createdAt: rule.createdAt?.toISOString(),
       })) || [],
       blackouts: venue.blackouts?.map(blackout => ({
         id: blackout.id,
         venueId: blackout.venueId,
-        startDateTime: blackout.startDateTime?.toISOString(),
-        endDateTime: blackout.endDateTime?.toISOString(),
+        startDate: blackout.startDate?.toISOString(),
+        endDate: blackout.endDate?.toISOString(),
         reason: blackout.reason,
         createdAt: blackout.createdAt?.toISOString(),
       })) || [],

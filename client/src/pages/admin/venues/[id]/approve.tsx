@@ -30,7 +30,7 @@ export default function VenueApprovalPage() {
 
     const { data: venue, isLoading, error } = useQuery<VenueWithDetails>({
         queryKey: ['/api/venues', id],
-        queryFn: () => getWithAuth(`/api/venues/${id}`),
+        queryFn: () => getWithAuth(`/venues/${id}`),
         enabled: !!id && isAuthenticated && user?.role === 'admin',
     });
 

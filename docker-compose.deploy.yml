@@ -6,14 +6,14 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: mononestnext_server_deploy
+    container_name: eventorove_server_deploy
     restart: unless-stopped
     env_file:
       - ./server/env.dev
     ports:
       - "3001:3001"
     networks:
-      - mononestnext_network
+      - eventorove_network
     volumes:
       - ./server/uploads:/app/uploads
     healthcheck:
@@ -28,7 +28,7 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-    container_name: mononestnext_client_deploy
+    container_name: eventorove_client_deploy
     restart: unless-stopped
     env_file:
       - ./client/env.dev
@@ -38,7 +38,7 @@ services:
       server:
         condition: service_healthy
     networks:
-      - mononestnext_network
+      - eventorove_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
@@ -49,7 +49,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: mononestnext_nginx
+    container_name: eventorove_nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -61,8 +61,8 @@ services:
       - client
       - server
     networks:
-      - mononestnext_network
+      - eventorove_network
 
 networks:
-  mononestnext_network:
+  eventorove_network:
     driver: bridge
