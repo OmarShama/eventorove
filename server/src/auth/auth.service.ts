@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { User } from '../users/user.entity';
 import { UserDto } from '../shared/types';
 import * as bcrypt from 'bcrypt';
@@ -20,6 +20,7 @@ export class AuthService {
         @InjectRepository(User)
         private userRepository: Repository<User>,
         private jwtService: JwtService,
+        private dataSource: DataSource,
     ) { }
 
     async validateUser(email: string, password: string): Promise<UserDto | null> {
@@ -54,29 +55,31 @@ export class AuthService {
     }
 
     async createUser(userData: CreateUserRequest): Promise<UserDto> {
-        // Check if user already exists
-        const existingUser = await this.userRepository.findOne({
-            where: { email: userData.email }
+        return await this.dataSource.transaction(async (manager) => {
+            // Check if user already exists
+            const existingUser = await manager.findOne(User, {
+                where: { email: userData.email }
+            });
+
+            if (existingUser) {
+                throw new Error('User with this email already exists');
+            }
+
+            // Hash password
+            const hashedPassword = await this.hashPassword(userData.password);
+
+            const user = manager.create(User, {
+                email: userData.email,
+                password: hashedPassword,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                role: userData.role || 'guest', // Use provided role or default to guest
+                emailVerifiedAt: new Date(), // Auto-verify for development
+            });
+
+            const savedUser = await manager.save(User, user);
+            return this.mapUserToDto(savedUser);
         });
-
-        if (existingUser) {
-            throw new Error('User with this email already exists');
-        }
-
-        // Hash password
-        const hashedPassword = await this.hashPassword(userData.password);
-
-        const user = this.userRepository.create({
-            email: userData.email,
-            password: hashedPassword,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            role: userData.role || 'guest', // Use provided role or default to guest
-            emailVerifiedAt: new Date(), // Auto-verify for development
-        });
-
-        const savedUser = await this.userRepository.save(user);
-        return this.mapUserToDto(savedUser);
     }
 
     async login(email: string, password: string): Promise<{ accessToken: string } | null> {
@@ -107,51 +110,57 @@ export class AuthService {
         id: string,
         updateData: Partial<{ firstName: string; lastName: string; profileImageUrl: string }>,
     ): Promise<UserDto> {
-        const user = await this.userRepository.findOne({ where: { id } });
+        return await this.dataSource.transaction(async (manager) => {
+            const user = await manager.findOne(User, { where: { id } });
 
-        if (!user) {
-            throw new Error('User not found');
-        }
+            if (!user) {
+                throw new Error('User not found');
+            }
 
-        // Update fields
-        if (updateData.firstName !== undefined) user.firstName = updateData.firstName;
-        if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
-        if (updateData.profileImageUrl !== undefined) user.profileImageUrl = updateData.profileImageUrl;
+            // Update fields
+            if (updateData.firstName !== undefined) user.firstName = updateData.firstName;
+            if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
+            if (updateData.profileImageUrl !== undefined) user.profileImageUrl = updateData.profileImageUrl;
 
-        const updatedUser = await this.userRepository.save(user);
-        return this.mapUserToDto(updatedUser);
+            const updatedUser = await manager.save(User, user);
+            return this.mapUserToDto(updatedUser);
+        });
     }
 
     async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
-        const user = await this.userRepository.findOne({
-            where: { id },
-            select: ['id', 'email', 'password'],
+        return await this.dataSource.transaction(async (manager) => {
+            const user = await manager.findOne(User, {
+                where: { id },
+                select: ['id', 'email', 'password'],
+            });
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            // Verify current password
+            const isCurrentPasswordValid = await this.verifyPassword(currentPassword, user.password);
+            if (!isCurrentPasswordValid) {
+                throw new Error('Current password is incorrect');
+            }
+
+            // Hash and save new password
+            const hashedNewPassword = await this.hashPassword(newPassword);
+            await manager.update(User, id, { password: hashedNewPassword });
         });
-
-        if (!user) {
-            throw new Error('User not found');
-        }
-
-        // Verify current password
-        const isCurrentPasswordValid = await this.verifyPassword(currentPassword, user.password);
-        if (!isCurrentPasswordValid) {
-            throw new Error('Current password is incorrect');
-        }
-
-        // Hash and save new password
-        const hashedNewPassword = await this.hashPassword(newPassword);
-        await this.userRepository.update(id, { password: hashedNewPassword });
     }
 
     async updateUserRole(id: string, role: 'guest' | 'host' | 'admin'): Promise<UserDto> {
-        const user = await this.userRepository.findOne({ where: { id } });
-        if (!user) {
-            throw new Error('User not found');
-        }
+        return await this.dataSource.transaction(async (manager) => {
+            const user = await manager.findOne(User, { where: { id } });
+            if (!user) {
+                throw new Error('User not found');
+            }
 
-        user.role = role;
-        const updatedUser = await this.userRepository.save(user);
-        return this.mapUserToDto(updatedUser);
+            user.role = role;
+            const updatedUser = await manager.save(User, user);
+            return this.mapUserToDto(updatedUser);
+        });
     }
 
     private mapUserToDto(user: User): UserDto {

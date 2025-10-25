@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Index, JoinColumn } 
 import { Venue } from './venue.entity';
 
 @Entity('blackouts')
-@Index(['venueId', 'startDate'])
+@Index(['venueId', 'dayOfWeek'])
 export class Blackout {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -14,11 +14,14 @@ export class Blackout {
     @JoinColumn({ name: 'venue_id' })
     venue: Venue;
 
-    @Column({ type: 'date' })
-    startDate: Date;
+    @Column({ type: 'int' })
+    dayOfWeek: number; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-    @Column({ type: 'date' })
-    endDate: Date;
+    @Column({ type: 'time' })
+    startTime: string; // HH:MM format
+
+    @Column({ type: 'time' })
+    endTime: string; // HH:MM format
 
     @Column({ type: 'varchar', length: 200, nullable: true })
     reason: string;

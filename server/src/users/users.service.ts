@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, DataSource } from 'typeorm';
 import { User, UserRole } from './user.entity';
 import { UserDto } from '../shared/types';
 
@@ -9,11 +9,12 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+    private dataSource: DataSource,
+  ) { }
 
   async getAllUsers(filters?: { role?: string; search?: string }): Promise<UserDto[]> {
     const whereConditions: any = {};
-    
+
     if (filters?.role && filters.role !== 'all') {
       whereConditions.role = filters.role as UserRole;
     }
@@ -46,50 +47,56 @@ export class UsersService {
   }
 
   async updateUserRole(id: string, role: UserRole): Promise<UserDto> {
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    return await this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, { where: { id } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-    user.role = role;
-    await this.userRepository.save(user);
+      user.role = role;
+      const savedUser = await manager.save(User, user);
 
-    return this.mapToUserDto(user);
+      return this.mapToUserDto(savedUser);
+    });
   }
 
   async updateUserStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<UserDto> {
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    return await this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, { where: { id } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-    // Note: The User entity doesn't have a status field, so this is a placeholder
-    // In a real implementation, you would add a status field to the User entity
-    // For now, we'll just return the user as-is
-    
-    return this.mapToUserDto(user);
+      // Note: The User entity doesn't have a status field, so this is a placeholder
+      // In a real implementation, you would add a status field to the User entity
+      // For now, we'll just return the user as-is
+
+      return this.mapToUserDto(user);
+    });
   }
 
   async deleteUser(id: string): Promise<void> {
-    const user = await this.userRepository.findOne({ 
-      where: { id },
-      relations: ['venues', 'bookings'],
+    return await this.dataSource.transaction(async (manager) => {
+      const user = await manager.findOne(User, {
+        where: { id },
+        relations: ['venues', 'bookings'],
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if user has active venues or bookings
+      if (user.venues && user.venues.length > 0) {
+        throw new Error('Cannot delete user with active venues. Please transfer or remove venues first.');
+      }
+
+      if (user.bookings && user.bookings.length > 0) {
+        throw new Error('Cannot delete user with booking history. Consider deactivating instead.');
+      }
+
+      await manager.remove(User, user);
     });
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Check if user has active venues or bookings
-    if (user.venues && user.venues.length > 0) {
-      throw new Error('Cannot delete user with active venues. Please transfer or remove venues first.');
-    }
-
-    if (user.bookings && user.bookings.length > 0) {
-      throw new Error('Cannot delete user with booking history. Consider deactivating instead.');
-    }
-
-    await this.userRepository.remove(user);
   }
 
   private mapToUserDto(user: User): UserDto {

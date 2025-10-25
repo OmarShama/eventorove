@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,12 +12,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { useDropzone } from 'react-dropzone';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { postWithAuth, isUnauthorizedError } from "@/lib/authUtils";
 import { venueApi } from "@/lib/api";
-import type { UploadResult } from "@uppy/core";
 
 const venueFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
@@ -75,8 +74,9 @@ export default function VenueForm() {
     closeTime: string;
   }>>([]);
   const [blackouts, setBlackouts] = useState<Array<{
-    startDateTime: string;
-    endDateTime: string;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
     reason: string;
   }>>([]);
 
@@ -108,6 +108,91 @@ export default function VenueForm() {
       minBookingMinutes: 30,
       bufferMinutes: 30,
     },
+  });
+
+  // Callback handlers for blackout changes to prevent re-rendering issues
+  const handleBlackoutReasonChange = useCallback((index: number, value: string) => {
+    setBlackouts(prev => {
+      const newBlackouts = [...prev];
+      newBlackouts[index].reason = value;
+      return newBlackouts;
+    });
+  }, []);
+
+  const handleBlackoutDayChange = useCallback((index: number, value: number) => {
+    setBlackouts(prev => {
+      const newBlackouts = [...prev];
+      newBlackouts[index].dayOfWeek = value;
+      return newBlackouts;
+    });
+  }, []);
+
+  const handleBlackoutStartTimeChange = useCallback((index: number, value: string) => {
+    setBlackouts(prev => {
+      const newBlackouts = [...prev];
+      newBlackouts[index].startTime = value;
+      return newBlackouts;
+    });
+  }, []);
+
+  const handleBlackoutEndTimeChange = useCallback((index: number, value: string) => {
+    setBlackouts(prev => {
+      const newBlackouts = [...prev];
+      newBlackouts[index].endTime = value;
+      return newBlackouts;
+    });
+  }, []);
+
+  const removeBlackout = useCallback((index: number) => {
+    setBlackouts(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleImageUpload = useCallback((files: File[]) => {
+    // Convert files to data URLs for preview
+    files.forEach((file) => {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload only image files.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please upload images smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setUploadedImages(prev => [...prev, result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [toast]);
+
+  const removeImage = useCallback((index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Dropzone configuration
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleImageUpload,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+    },
+    maxSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 20 - uploadedImages.length,
   });
 
   // Fetch venue data for editing
@@ -174,40 +259,39 @@ export default function VenueForm() {
 
   const createVenueMutation = useMutation({
     mutationFn: async (data: VenueFormData) => {
-      return postWithAuth('/venues', data);
+      // Prepare the complete venue data with all related entities
+      const venueData = {
+        ...data,
+        images: uploadedImages.map((url, index) => ({
+          imageUrl: url,
+          displayOrder: index,
+          isMain: index === 0,
+        })),
+        amenities: amenities.map(name => ({ name })),
+        packages: [], // Add packages if needed in the future
+        availabilityRules: availabilityRules.map(rule => ({
+          dayOfWeek: rule.dayOfWeek,
+          openTime: rule.openTime,
+          closeTime: rule.closeTime,
+          isAvailable: true,
+        })),
+        blackouts: blackouts.map(blackout => ({
+          dayOfWeek: blackout.dayOfWeek,
+          startTime: blackout.startTime,
+          endTime: blackout.endTime,
+          reason: blackout.reason,
+        })),
+      };
+
+      return postWithAuth('/venues', venueData);
     },
-    onSuccess: async (newVenue) => {
-      try {
-        // Add amenities using auth utilities
-        for (const amenity of amenities) {
-          await postWithAuth(`/venues/${newVenue.id}/amenities`, { name: amenity });
-        }
-
-        // Add availability rules
-        for (const rule of availabilityRules) {
-          await postWithAuth(`/venues/${newVenue.id}/availability-rules`, rule);
-        }
-
-        // Add blackouts
-        for (const blackout of blackouts) {
-          await postWithAuth(`/venues/${newVenue.id}/blackouts`, blackout);
-        }
-
-        queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
-        toast({
-          title: "Venue Created",
-          description: "Your venue has been submitted for review.",
-        });
-        router.push('/host/dashboard');
-      } catch (error) {
-        console.error('Error adding venue details:', error);
-        // Still show success for venue creation, but log error
-        toast({
-          title: "Venue Created",
-          description: "Your venue has been created, but there was an issue adding some details.",
-        });
-        router.push('/host/dashboard');
-      }
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/host/venues'] });
+      toast({
+        title: "Venue Created",
+        description: "Your venue has been submitted for review.",
+      });
+      router.push('/host/dashboard');
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -273,55 +357,6 @@ export default function VenueForm() {
     },
   });
 
-  const handleGetUploadParameters = async () => {
-    if (!params.id) {
-      throw new Error('Venue ID is required for upload');
-    }
-    const response = await fetch(`/api/venues/${params.id}/images/upload`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get upload URL');
-    }
-
-    const { uploadURL } = await response.json();
-    return {
-      method: 'PUT' as const,
-      url: uploadURL,
-    };
-  };
-
-  const handleUploadComplete = async (result: UploadResult<any, any>) => {
-    if (result.successful && result.successful.length > 0) {
-      const imageURL = result.successful[0].uploadURL;
-
-      try {
-        if (!params.id) return;
-        const response = await fetch(`/api/venues/${params.id}/images`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageURL }),
-        });
-
-        if (response.ok) {
-          const { objectPath } = await response.json();
-          setUploadedImages(prev => [...prev, objectPath]);
-          toast({
-            title: "Image Uploaded",
-            description: "Venue image has been uploaded successfully.",
-          });
-        }
-      } catch (error) {
-        console.error('Failed to save image:', error);
-        toast({
-          title: "Upload Error",
-          description: "Failed to save uploaded image.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
 
   const addAmenity = () => {
     if (newAmenity.trim() && !amenities.includes(newAmenity.trim())) {
@@ -746,30 +781,38 @@ export default function VenueForm() {
                   <div className="space-y-4">
                     {blackouts.map((blackout, index) => (
                       <div key={index} className="p-4 border border-border rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                           <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">Start Date & Time</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">Day of Week</label>
+                            <select
+                              value={blackout.dayOfWeek}
+                              onChange={(e) => handleBlackoutDayChange(index, parseInt(e.target.value))}
+                              className="w-full p-2 border border-input rounded-md"
+                            >
+                              <option value={0}>Sunday</option>
+                              <option value={1}>Monday</option>
+                              <option value={2}>Tuesday</option>
+                              <option value={3}>Wednesday</option>
+                              <option value={4}>Thursday</option>
+                              <option value={5}>Friday</option>
+                              <option value={6}>Saturday</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Start Time</label>
                             <input
-                              type="datetime-local"
-                              value={blackout.startDateTime}
-                              onChange={(e) => {
-                                const newBlackouts = [...blackouts];
-                                newBlackouts[index].startDateTime = e.target.value;
-                                setBlackouts(newBlackouts);
-                              }}
+                              type="time"
+                              value={blackout.startTime}
+                              onChange={(e) => handleBlackoutStartTimeChange(index, e.target.value)}
                               className="w-full p-2 border border-input rounded-md"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">End Date & Time</label>
+                            <label className="block text-sm font-medium text-foreground mb-1">End Time</label>
                             <input
-                              type="datetime-local"
-                              value={blackout.endDateTime}
-                              onChange={(e) => {
-                                const newBlackouts = [...blackouts];
-                                newBlackouts[index].endDateTime = e.target.value;
-                                setBlackouts(newBlackouts);
-                              }}
+                              type="time"
+                              value={blackout.endTime}
+                              onChange={(e) => handleBlackoutEndTimeChange(index, e.target.value)}
                               className="w-full p-2 border border-input rounded-md"
                             />
                           </div>
@@ -778,11 +821,7 @@ export default function VenueForm() {
                             <input
                               type="text"
                               value={blackout.reason}
-                              onChange={(e) => {
-                                const newBlackouts = [...blackouts];
-                                newBlackouts[index].reason = e.target.value;
-                                setBlackouts(newBlackouts);
-                              }}
+                              onChange={(e) => handleBlackoutReasonChange(index, e.target.value)}
                               placeholder="e.g., Maintenance, Private Event"
                               className="w-full p-2 border border-input rounded-md"
                             />
@@ -792,10 +831,7 @@ export default function VenueForm() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const newBlackouts = blackouts.filter((_, i) => i !== index);
-                            setBlackouts(newBlackouts);
-                          }}
+                          onClick={() => removeBlackout(index)}
                         >
                           <i className="fas fa-trash mr-2"></i>
                           Remove Blackout
@@ -806,11 +842,10 @@ export default function VenueForm() {
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        const now = new Date();
-                        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
                         setBlackouts([...blackouts, {
-                          startDateTime: now.toISOString().slice(0, 16),
-                          endDateTime: tomorrow.toISOString().slice(0, 16),
+                          dayOfWeek: 0,
+                          startTime: '09:00',
+                          endTime: '17:00',
                           reason: '',
                         }]);
                       }}
@@ -824,43 +859,69 @@ export default function VenueForm() {
             </Card>
 
             {/* Images */}
-            {isEdit && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Venue Images</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Venue Images</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Image Grid */}
+                {uploadedImages.length > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {uploadedImages.map((imagePath, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted group">
                         <img
                           src={imagePath}
                           alt={`Venue image ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
+                )}
 
-                  {uploadedImages.length < 20 && (
-                    <ObjectUploader
-                      maxNumberOfFiles={20 - uploadedImages.length}
-                      onGetUploadParameters={handleGetUploadParameters}
-                      onComplete={handleUploadComplete}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-camera"></i>
-                        <span>Upload Images ({uploadedImages.length}/20)</span>
-                      </div>
-                    </ObjectUploader>
-                  )}
+                {/* Upload Area */}
+                {uploadedImages.length < 20 && (
+                  <div
+                    {...getRootProps()}
+                    className={`
+                      border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                      ${isDragActive
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                      }
+                    `}
+                  >
+                    <input {...getInputProps()} />
+                    <div className="flex flex-col items-center space-y-2">
+                      <i className="fas fa-camera text-3xl text-gray-400"></i>
+                      <span className="text-lg font-medium text-gray-700">
+                        {isDragActive
+                          ? 'Drop images here'
+                          : 'Upload Images'
+                        }
+                      </span>
+                      <span className="text-sm text-gray-600">
+                        ({uploadedImages.length}/20) - Click to browse or drag and drop
+                      </span>
+                      <p className="text-xs text-gray-500">
+                        Supports JPG, PNG, WebP up to 5MB each
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-                  <p className="text-sm text-muted-foreground">
-                    Upload up to 20 high-quality images. Maximum 5MB per image.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+                <p className="text-sm text-muted-foreground">
+                  Upload up to 20 high-quality images. Maximum 5MB per image.
+                </p>
+              </CardContent>
+            </Card>
 
             <Separator />
 

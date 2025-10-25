@@ -11,7 +11,9 @@ const getApiUrl = () => {
     // Always use environment variable if available (Railway sets this)
     if (process.env.NEXT_PUBLIC_API_URL) {
         console.log('Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-        return process.env.NEXT_PUBLIC_API_URL;
+        // Ensure no trailing slash to avoid double slashes
+        const url = process.env.NEXT_PUBLIC_API_URL;
+        return url.endsWith('/') ? url.slice(0, -1) : url;
     }
 
     // Check if we're in the browser
@@ -34,8 +36,11 @@ const getApiUrl = () => {
     return 'https://eventorove-production.up.railway.app/api';
 };
 
+const apiUrl = getApiUrl();
+console.log('Final API URL:', apiUrl);
+
 export const config = {
-    apiUrl: getApiUrl(),
+    apiUrl,
     environment: process.env.NEXT_PUBLIC_ENV || 'local',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',

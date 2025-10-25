@@ -14,7 +14,7 @@ export class VenueImage {
     @JoinColumn({ name: 'venue_id' })
     venue: Venue;
 
-    @Column({ type: 'varchar', length: 500 })
+    @Column({ type: 'text' })
     imageUrl: string;
 
     @Column({ type: 'varchar', length: 200, nullable: true })

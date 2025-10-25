@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Venue } from './venue.entity';
 
 @Entity('venue_amenities')
@@ -10,6 +10,7 @@ export class VenueAmenity {
     venueId: string;
 
     @ManyToOne(() => Venue, v => v.amenities)
+    @JoinColumn({ name: 'venue_id' })
     venue: Venue;
 
     @Column({ type: 'varchar', length: 100 })
