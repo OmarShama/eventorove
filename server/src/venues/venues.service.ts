@@ -494,8 +494,8 @@ export class VenuesService {
       images: venue.images?.map(img => ({
         id: img.id,
         venueId: img.venueId,
-        path: img.url,
-        idx: img.order,
+        path: img.imageUrl,
+        idx: img.displayOrder,
         createdAt: img.createdAt?.toISOString(),
       })) || [],
       amenities: venue.amenities?.map(amenity => ({
